@@ -1,7 +1,8 @@
 import requests
+from urllib.parse import urlencode
 from ..models import LoginParams, AccessGranted, UpdateUser, ErrorReport, UserData
 from typing import Union
-from ..utils import safe_request
+from ..utils import safe_request, safe_login
 
 endpoint = "user/"
 
@@ -9,9 +10,10 @@ endpoint = "user/"
 def authenticate_sync(baseurl: str, login_params: LoginParams) -> Union[AccessGranted, ErrorReport]:
     uri = baseurl + endpoint
     data = login_params.model_dump(exclude_unset=False)
-    head = {'Content-Type': 'application/json'}
+    head = {'Content-Type': 'application/x-www-form-urlencoded'}
 
-    response = safe_request('POST', uri, data, head)
+    response = safe_login(uri ,data, head)
+
     if isinstance(response,ErrorReport):
         return response
     return AccessGranted.model_validate(response)

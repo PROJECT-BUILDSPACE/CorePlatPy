@@ -23,6 +23,18 @@ def preety_print_error(error: ErrorReport):
     print('API Status :', str(error.internal_status))
     print('API Message:', str(error.message))
 
+def safe_login(uri: str, data: dict, headers: dict) -> Union[dict, ErrorReport]:
+    try:
+        response = requests.post(uri, data=data, headers=headers)
+    except Exception as e:
+        print("Error at request: " + str(e))
+        return ErrorReport()
+    else:
+        if response.status_code >= 300:
+            return respond_with_error(response)
+        return response.json()
+
+
 def safe_request(request: str, uri: str, data: Union[dict, None], headers: dict) -> Union[dict, ErrorReport]:
     if request == 'POST':
         try:
