@@ -2,7 +2,6 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 
 
-
 class LoginParams(BaseModel):
     username: str
     password: str

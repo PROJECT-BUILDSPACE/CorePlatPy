@@ -1,11 +1,16 @@
 from .models import (
     UpdateUser, LoginParams, BearerToken, ErrorReport, UserAttrs, UserData,
-    Organization
+    Organization, Bucket, Folder
 )
 from .account import (
     authenticate_sync, update_info, get_user_data,
     post_organization, get_user_organizations
 )
+
+from .storage import (
+    create_bucket, get_folder_by_id
+)
+
 import getpass
 from jwt import decode
 from .utils import preety_print_error
@@ -34,6 +39,9 @@ class Client:
 
         self.api_key = None
         self.user_id = None
+
+    def __get_instance_variables__(self):
+        return {k: v for k, v in self.__dict__.items() if not k.startswith('__') and not callable(v)}
 
     def authenticate(self):
         """
@@ -89,8 +97,7 @@ class Client:
 
         :return: UserData
         """
-        token_data = BearerToken.model_validate(decode(self.api_key, options={"verify_signature": False}))
-        resp = get_user_data(self.account_url, token_data.sub, self.api_key)
+        resp = get_user_data(self.account_url, self.api_key)
         if isinstance(resp, ErrorReport):
             preety_print_error(resp)
             return None
@@ -107,8 +114,7 @@ class Client:
         except Exception as e:
             print("Unexpected Error: ", str(e))
         else:
-            token_data = BearerToken.model_validate(decode(self.api_key, options={"verify_signature": False}))
-            resp = update_info(self.account_url, token_data.sub, update_user, self.api_key)
+            resp = update_info(self.account_url, update_user, self.api_key)
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
 
@@ -122,8 +128,7 @@ class Client:
         except Exception as e:
             print("Unexpected Error: ", str(e))
         else:
-            token_data = BearerToken.model_validate(decode(self.api_key, options={"verify_signature": False}))
-            resp = update_info(self.account_url, token_data.sub, update_user, self.api_key)
+            resp = update_info(self.account_url, update_user, self.api_key)
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
 
@@ -147,7 +152,24 @@ class Client:
         if isinstance(resp, ErrorReport):
             preety_print_error(resp)
             return None
+
+        bucket = Bucket(_id=resp.id, name=organization)
+        resp = create_bucket(self.api_url, bucket, self.api_key)
+        if isinstance(resp, ErrorReport):
+            preety_print_error(resp)
+            return None
+
         return resp
 
     def get_my_organization(self) -> Union[List[Organization], None]:
         return (get_user_organizations(self.account_url, self.api_key))
+
+    def get_folder(self, folder_id:str) -> Union[Folder, None]:
+        folder = get_folder_by_id(self.api_url, folder_id, self.api_key)
+        if isinstance(folder, ErrorReport):
+            preety_print_error(folder)
+            return None
+
+        folder.client_params = self.__get_instance_variables__()
+        print(folder)
+        return folder
