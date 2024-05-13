@@ -4,10 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "CorePlatPy"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
-  { name="Iason Sotiropoulos", email="isotiropoulos@singularlogic.eu" },
+  { name="Iason Sotiropoulos", email="isotiropoulos@singularlogic.eu"},
+  { name="Athos Papanikolaou", email="apapanikolaou@singularlogic.eu"},
+  { name="Sotiris Aspragkathos", email="saspragkathos@singularlogic.eu"},
 ]
+dependencies = [
+    "pydantic>=2.7.0", "requests", "tqdm", "PyJWT"
+]
+
 description = "A Python client for the SLG's Core Platform"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -18,5 +24,5 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/pypa/sampleproject"
+Homepage = "https://github.com/PROJECT-BUILDSPACE/CorePlatPy/tree/main"
 Issues = "https://github.com/pypa/sampleproject/issues"

@@ -37,12 +37,15 @@ def safe_login(uri: str, data: dict, headers: dict) -> Union[dict, ErrorReport]:
         return response.json()
 
 def safe_json_request(request: str, uri: str, data: Union[dict, None], headers: dict) -> Union[dict, ErrorReport, None]:
+    requests_max_size = 10 * 1024 * 1024  # 10 MB
+    session = requests.Session()
+    session.max_request_size = requests_max_size
     if request == 'POST':
         try:
             if data:
-                response = requests.post(uri, json=data, headers=headers)
+                response = session.post(uri, json=data, headers=headers)
             else:
-                response = requests.post(uri, headers=headers)
+                response = session.post(uri, headers=headers)
         except Exception as e:
             print("Error at request: " + str(e))
             return ErrorReport()
@@ -59,9 +62,9 @@ def safe_json_request(request: str, uri: str, data: Union[dict, None], headers: 
     elif request == 'GET':
         try:
             if data:
-                response = requests.get(uri, json=data, headers=headers)
+                response = session.get(uri, json=data, headers=headers)
             else:
-                response = requests.get(uri, headers=headers)
+                response = session.get(uri, headers=headers)
         except Exception as e:
             print("Error at request: " + str(e))
             return ErrorReport()
@@ -78,9 +81,9 @@ def safe_json_request(request: str, uri: str, data: Union[dict, None], headers: 
     elif request == 'PUT':
         try:
             if data:
-                response = requests.put(uri, json=data, headers=headers)
+                response = session.put(uri, json=data, headers=headers)
             else:
-                response = requests.put(uri, headers=headers)
+                response = session.put(uri, headers=headers)
         except Exception as e:
             print("Error at request: " + str(e))
             return ErrorReport()
@@ -97,9 +100,9 @@ def safe_json_request(request: str, uri: str, data: Union[dict, None], headers: 
     elif request == 'DELETE':
         try:
             if data:
-                response = requests.delete(uri, json=data, headers=headers)
+                response = session.delete(uri, json=data, headers=headers)
             else:
-                response = requests.delete(uri, headers=headers)
+                response = session.delete(uri, headers=headers)
         except Exception as e:
             print("Error at request: " + str(e))
             return ErrorReport()
@@ -118,12 +121,15 @@ def safe_json_request(request: str, uri: str, data: Union[dict, None], headers: 
         return ErrorReport()
 
 def safe_data_request(request: str, uri: str, data: Union[dict, None], headers: dict) -> Union[dict, ErrorReport, None]:
+    requests_max_size = 10 * 1024 * 1024  # 10 MB
+    session = requests.Session()
+    session.max_request_size = requests_max_size
     if request == 'POST':
         try:
             if data:
-                response = requests.post(uri, data=data, headers=headers)
+                response = session.post(uri, data=data, headers=headers)
             else:
-                response = requests.post(uri, headers=headers)
+                response = session.post(uri, headers=headers)
         except Exception as e:
             print("Error at request: " + str(e))
             return ErrorReport()
@@ -140,9 +146,9 @@ def safe_data_request(request: str, uri: str, data: Union[dict, None], headers: 
     elif request == 'GET':
         try:
             if data:
-                response = requests.get(uri, data=data, headers=headers)
+                response = session.get(uri, data=data, headers=headers)
             else:
-                response = requests.get(uri, headers=headers)
+                response = session.get(uri, headers=headers)
         except Exception as e:
             print("Error at request: " + str(e))
             return ErrorReport()
@@ -159,9 +165,9 @@ def safe_data_request(request: str, uri: str, data: Union[dict, None], headers: 
     elif request == 'PUT':
         try:
             if data:
-                response = requests.put(uri, data=data, headers=headers)
+                response = session.put(uri, data=data, headers=headers)
             else:
-                response = requests.put(uri, headers=headers)
+                response = session.put(uri, headers=headers)
         except Exception as e:
             print("Error at request: " + str(e))
             return ErrorReport()
@@ -178,9 +184,9 @@ def safe_data_request(request: str, uri: str, data: Union[dict, None], headers: 
     elif request == 'DELETE':
         try:
             if data:
-                response = requests.delete(uri, data=data, headers=headers)
+                response = session.delete(uri, data=data, headers=headers)
             else:
-                response = requests.delete(uri, headers=headers)
+                response = session.delete(uri, headers=headers)
         except Exception as e:
             print("Error at request: " + str(e))
             return ErrorReport()

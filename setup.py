@@ -6,14 +6,12 @@ with open(path.join(working_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='my_test_project_am', # name of packe which will be package dir below project
-    version='0.0.1',
-    url='https://github.com/yourname/yourproject',
-    author='The Urban Penguin',
-    author_email='andrewmallett90@gmail.com',
-    description='Simple test package',
+    name='coreplatpy', # name of packe which will be package dir below project
+    url='https://github.com/PROJECT-BUILDSPACE/CorePlatPy/tree/main',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    packages=find_packages(),
-    install_requires=[],
+    packages=find_packages('src'),
+    package_dir={'': 'src'},
+
+    zip_safe=False
 )

@@ -1,6 +1,6 @@
 import unittest
-from ..coreplatpy import *
-from ..coreplatpy.models import *
+from coreplatpy import *
+from coreplatpy.models import *
 from jwt import decode
 
 class TestAuthentication(unittest.TestCase):
@@ -56,12 +56,14 @@ class TestAuthentication(unittest.TestCase):
         folder = client.get_folder('27e3f766-6f1d-4b61-b99f-a0f3180a6251')
 
     def test_upload_file(self):
-        client = Client(api_url="http://localhost:30000/", account_url="http://localhost:5001/")
-        client.login("isotiropoulos@singularlogic.eu", "new_pass")
+        # client = Client(api_url="http://localhost:30000/", account_url="http://localhost:5001/")
+        client = Client()
+        client.login("isotiropoulos@singularlogic.eu", "1234")
 
-        folder = client.get_folder('a1a7e383-c15d-4f95-803a-693e8e86aa29')
+        folder = client.get_folder('6f340dad-76f9-43c9-8071-50e6cc7a9c4d')
 
-        resp = folder.upload_file('C:\\Users\\isotiropoulos\\centralenv\\newTLT.tif', {'title':'client_test.tif'})
+        # resp = folder.upload_file('C:\\Users\\isotiropoulos\\centralenv\\Flights.ipynb', {'title':'Flights.ipynb'})
+        resp = folder.upload_file('C:\\Users\\isotiropoulos\\Downloads\\Free_Test_Data_1MB_JPG.jpg', {'title':'Flights.ipynb'})
         print(resp)
 
     def test_list_folder(self):

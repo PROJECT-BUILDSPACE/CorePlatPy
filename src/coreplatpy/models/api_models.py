@@ -112,6 +112,7 @@ class Folder(BaseModel):
             threads.append(thread)
 
         for thread in tqdm(threads, desc=f'Uploading {resp.meta.title}'):
+
             thread.join()
 
     def list_items(self):
