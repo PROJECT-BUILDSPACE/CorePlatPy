@@ -5,10 +5,6 @@ from jwt import decode
 
 class TestAuthentication(unittest.TestCase):
 
-    # def test_authenticate(self):
-    #     client = Client(api_url="http://localhost:30000/", account_url="http://localhost:5001/")
-    #     client.authenticate()
-
     def test_login(self):
         client = Client(api_url="http://localhost:30000/", account_url="http://localhost:5001/")
         client.login("isotiropoulos@singularlogic.eu", "new_pass")
@@ -25,16 +21,15 @@ class TestAuthentication(unittest.TestCase):
         client.update_my_password('new_pass')
 
     def test_attributes(self):
-        client = Client(api_url="http://localhost:30000/", account_url="http://localhost:5001/")
-        client.login("isotiropoulos@singularlogic.eu", "new_pass")
-        user_data = client.get_my_user()
-
+        user_data = self.client.get_my_user()
         attrs = user_data.attributes
         old_country = attrs.country
         attrs.country = ['Greece']
 
-        client.update_my_attributes(attrs)
-        new_attrs = client.get_my_user()
+        self.client.update_my_attributes(attrs)
+        updated_user_data = self.client.get_my_user()
+        self.assertEqual(updated_user_data.attributes.country, ['Greece'])
+        self.client.update_my_attributes(attrs)
 
     def test_create_org(self):
         client = Client(api_url="http://localhost:30000/", account_url="http://localhost:5001/")

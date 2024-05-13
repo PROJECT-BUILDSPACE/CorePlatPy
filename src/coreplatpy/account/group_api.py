@@ -25,6 +25,25 @@ def get_user_organizations(baseurl: str, token:str) -> Union[List[Organization],
         return response
     return [Organization.model_validate(item) for item in response]
 
+def post_new_group(baseurl: str, group_id: str, organization: Organization, token: str) -> Union[Organization, ErrorReport]:
+    uri = baseurl + endpoint + f"{group_id}"
+    data = organization.model_dump(exclude_unset=True)
+    head = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}
+
+    response = safe_request('POST', uri, data, head) 
+    if isinstance(response, ErrorReport):
+        return response
+    return Organization.model_validate(response)
+
+def delete_group(baseurl: str, group_id: str, token: str) -> Union[None, ErrorReport]:
+    uri = baseurl + endpoint + f"{group_id}"
+    head = {'Authorization': f'Bearer {token}'}
+
+    response = safe_request('DELETE', uri, head)
+    if isinstance(response, ErrorReport):
+        return response
+    return None  
+
 
 def get_organization_info(baseurl: str, group_id: str, token:str) -> Union[Organization, ErrorReport]:
     uri = baseurl + endpoint + group_id
