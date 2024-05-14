@@ -1,5 +1,5 @@
 import requests
-from ..models import RoleUpdate, ErrorReport, Role
+from ..models import ErrorReport, RoleUpdate, Role
 from ..utils import safe_request
 from typing import Union
 
