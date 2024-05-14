@@ -3,17 +3,6 @@ from typing import List, Dict, Optional
 from numpy import float32
 
 
-class Form(BaseModel):
-    access_token: str
-    expires_in: int
-    refresh_expires_in: int
-    refresh_token: str
-    token_type: str
-    not_before_policy: int = Field(alias='not-before-policy')
-    session_state: str
-    scope: str
-
-
 class CopernicusTaskError(BaseModel):
     reason: str = ""
     message: str = ""
@@ -40,7 +29,7 @@ class CopernicusDetails(BaseModel):
 
 
 class AccordionOpts:
-    open_groups: Optional[dict]
+    openGroups: Optional[dict]
     searchable: Optional[bool]
 
 
@@ -69,7 +58,7 @@ class Projection:
 
 class Fields:
     comments: Optional[str]
-    max_length: Optional[int]
+    maxlength: Optional[int]
     placeholder: Optional[str]
     required: Optional[bool]
     type: Optional[str]
@@ -82,20 +71,20 @@ class Details(BaseModel):
     values: Optional[List[str]]
     accordion: Optional[bool]
     accordion_groups: Optional[bool]
-    display_as_list: Optional[bool]
-    full_height: Optional[bool]
-    with_map: Optional[bool]
+    displayaslist: Optional[bool]
+    fullheight: Optional[bool]
+    withmap: Optional[bool]
     wrapping: Optional[bool]
     precision: Optional[int]
     maximum_selections: Optional[int]
     text_file: Optional[str]
     information: Optional[str]
-    accordion_options: Optional[AccordionOpts]
+    accordionOptions: Optional[AccordionOpts]
     default: Optional[dict]
-    extent_labels: Optional[List[str]]
+    extentlabels: Optional[List[str]]
     groups: Optional[dict]
     range: Optional[RangeLocal]
-    change_visible: Optional[bool]
+    changevisible: Optional[bool]
     concat: Optional[str]
     latitude: Optional[Coords]
     longitude: Optional[Coords]
@@ -108,3 +97,12 @@ class CopernicusInput(BaseModel):
     dataset_name: str
     body: Details
 
+
+class Form(BaseModel):
+    css: Optional[str]
+    details: Optional[Details]
+    help: Optional[str]
+    label: Optional[str]
+    name: Optional[str]
+    required: Optional[bool]
+    type: Optional[str]
