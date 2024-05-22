@@ -1,6 +1,6 @@
 from .models import (
     UpdateUser, LoginParams, BearerToken, ErrorReport, UserAttrs, UserData,
-    Organization, RoleUpdate, Role, Bucket, Folder
+    Organization, Bucket, Folder, RoleUpdate, Role
 )
 from .account import (
     authenticate_sync, update_info, get_user_data,
@@ -260,3 +260,12 @@ class Client:
         folder.client_params = self.__get_instance_variables__()
         print(folder)
         return folder
+
+    def download_copernicus_dataset(self):
+        return
+
+    def get_download_status(self):
+        return
+
+    def list_copernicus_resources(self):
+        return

@@ -12,6 +12,5 @@ setup(
     long_description_content_type='text/markdown',
     packages=find_packages('src'),
     package_dir={'': 'src'},
-
     zip_safe=False
 )

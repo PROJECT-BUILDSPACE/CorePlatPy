@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
-from numpy import float32
 
 
 class CopernicusTaskError(BaseModel):
@@ -34,10 +33,10 @@ class AccordionOpts:
 
 
 class RangeLocal:
-    e: Optional[float32]
-    n: Optional[float32]
-    w: Optional[float32]
-    s: Optional[float32]
+    e: Optional[float]
+    n: Optional[float]
+    w: Optional[float]
+    s: Optional[float]
 
 
 class CoordRange:

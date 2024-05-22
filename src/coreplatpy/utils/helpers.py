@@ -204,7 +204,7 @@ def safe_data_request(request: str, uri: str, data: Union[dict, None], headers: 
         print("Not a valid method: " + str(e))
         return ErrorReport()
 
-def split_file_chunks(file_path, num_chunks, chunk_size_mb = 5 * 1024 * 1024 ):
+def split_file_chunks(file_path, num_chunks, chunk_size_mb = 1 * 1024 * 1024 ):
     with open(file_path, 'rb') as f:
         # Read the file in chunks
         for i in range(num_chunks):
