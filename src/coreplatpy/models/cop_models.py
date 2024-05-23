@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any, Union
 
 
 class CopernicusTaskError(BaseModel):
@@ -28,68 +28,75 @@ class CopernicusDetails(BaseModel):
 
 
 class AccordionOpts:
-    openGroups: Optional[dict]
-    searchable: Optional[bool]
+    openGroups: Optional[Any] = None
+    searchable: Optional[bool] = None
 
 
 class RangeLocal:
+<<<<<<< Updated upstream
     e: Optional[float]
     n: Optional[float]
     w: Optional[float]
     s: Optional[float]
+=======
+    e: Optional[float] = None
+    n: Optional[float] = None
+    w: Optional[float] = None
+    s: Optional[float] = None
+>>>>>>> Stashed changes
 
 
 class CoordRange:
-    min: Optional[int]
-    max: Optional[int]
+    min: Optional[int] = None
+    max: Optional[int] = None
 
 
 class Coords:
-    default: Optional[int]
-    precision: Optional[int]
-    range: Optional[CoordRange]
+    default: Optional[int] = None
+    precision: Optional[int] = None
+    range: Optional[CoordRange] = None
 
 
 class Projection:
-    id: Optional[int]
-    overlay: Optional[bool]
-    use: Optional[bool]
+    id: Optional[int] = None
+    overlay: Optional[bool] = None
+    use: Optional[bool] = None
 
 class Fields:
-    comments: Optional[str]
-    maxlength: Optional[int]
-    placeholder: Optional[str]
-    required: Optional[bool]
-    type: Optional[str]
+    comments: Optional[str] = None
+    maxlength: Optional[int] = None
+    placeholder: Optional[str] = None
+    required: Optional[bool] = None
+    type: Optional[str] = None
 
 
 class Details(BaseModel):
-    columns: Optional[int]
-    id: Optional[int]
-    labels: Optional[dict]
-    values: Optional[List[str]]
-    accordion: Optional[bool]
-    accordion_groups: Optional[bool]
-    displayaslist: Optional[bool]
-    fullheight: Optional[bool]
-    withmap: Optional[bool]
-    wrapping: Optional[bool]
-    precision: Optional[int]
-    maximum_selections: Optional[int]
-    text_file: Optional[str]
-    information: Optional[str]
-    accordionOptions: Optional[AccordionOpts]
-    default: Optional[dict]
-    extentlabels: Optional[List[str]]
-    groups: Optional[dict]
-    range: Optional[RangeLocal]
-    changevisible: Optional[bool]
-    concat: Optional[str]
-    latitude: Optional[Coords]
-    longitude: Optional[Coords]
-    projection: Optional[Projection]
-    text: Optional[str]
-    fields: Optional[List[Fields]]
+    columns: Optional[int] = None
+    id: Optional[int] = None
+    labels: Optional[Dict[Any, Any]] = None
+    values: Optional[List[str]] = None
+    accordion: Optional[bool] = None
+    accordion_groups: Optional[bool] = None
+    displayaslist: Optional[bool] = None
+    fullheight: Optional[bool] = None
+    withmap: Optional[bool] = None
+    wrapping: Optional[bool] = None
+    precision: Optional[int] = None
+    maximum_selections: Optional[int] = None
+    text_file: Optional[str] = None
+    information: Optional[str] = None
+    accordionOptions: Optional[AccordionOpts] = None
+    default: Optional[List[Any]] = None
+    extentlabels: Optional[List[str]] = None
+    groups: Optional[List[Any]] = None
+    range: Optional[RangeLocal] = None
+    changevisible: Optional[bool] = None
+    concat: Optional[str] = None
+    latitude: Optional[Coords] = None
+    longitude: Optional[Coords] = None
+    projection: Optional[Projection] = None
+    text: Optional[str] = None
+    fields: Optional[List[Fields]] = None
 
 
 class CopernicusInput(BaseModel):
