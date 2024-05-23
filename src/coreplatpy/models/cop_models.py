@@ -33,17 +33,11 @@ class AccordionOpts:
 
 
 class RangeLocal:
-<<<<<<< Updated upstream
-    e: Optional[float]
-    n: Optional[float]
-    w: Optional[float]
-    s: Optional[float]
-=======
     e: Optional[float] = None
     n: Optional[float] = None
     w: Optional[float] = None
     s: Optional[float] = None
->>>>>>> Stashed changes
+
 
 
 class CoordRange:
