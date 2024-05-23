@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List, Dict, Optional, Any, Union
 
 
@@ -27,12 +27,12 @@ class CopernicusDetails(BaseModel):
     error: Optional[CopernicusTaskError] = CopernicusTaskError()
 
 
-class AccordionOpts:
+class AccordionOpts(BaseModel):
     openGroups: Optional[Any] = None
     searchable: Optional[bool] = None
 
 
-class RangeLocal:
+class RangeLocal(BaseModel):
     e: Optional[float] = None
     n: Optional[float] = None
     w: Optional[float] = None
@@ -40,23 +40,24 @@ class RangeLocal:
 
 
 
-class CoordRange:
+class CoordRange(BaseModel):
     min: Optional[int] = None
     max: Optional[int] = None
 
 
-class Coords:
+class Coords(BaseModel):
     default: Optional[int] = None
     precision: Optional[int] = None
     range: Optional[CoordRange] = None
 
 
-class Projection:
+class Projection(BaseModel):
     id: Optional[int] = None
     overlay: Optional[bool] = None
     use: Optional[bool] = None
 
-class Fields:
+
+class Fields(BaseModel):
     comments: Optional[str] = None
     maxlength: Optional[int] = None
     placeholder: Optional[str] = None
