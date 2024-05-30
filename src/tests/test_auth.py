@@ -1,6 +1,6 @@
 import unittest
-from coreplatpy import *
-from coreplatpy.models import *
+from src.coreplatpy import *
+from src.coreplatpy.models import *
 from jwt import decode
 
 class TestAuthentication(unittest.TestCase):
@@ -95,3 +95,33 @@ class TestAuthentication(unittest.TestCase):
 
         resp = folder.share_with_organizations(['Another_ORG'])
         print(resp)
+
+
+    def test_copernicus_list(self):
+        client = Client(api_url="http://localhost:30000/", account_url="http://localhost:5001/")
+        client.login("isotiropoulos@singularlogic.eu", "new_pass")
+        client.list_copernicus_resources_per_service("cds")
+        client.list_copernicus_resources_per_service("ads")
+        return
+
+    def test_copernicus_form(self):
+        client = Client(api_url="http://localhost:30000/", account_url="http://localhost:5001/")
+        client.login("isotiropoulos@singularlogic.eu", "new_pass")
+        client.get_copernicus_form_for_resource("cds", "reanalysis-era5-pressure-levels")
+        return
+
+    def copernicus_dataset_request(self):
+        client = Client(api_url="http://localhost:30000/", account_url="http://localhost:5001/")
+        client.login("isotiropoulos@singularlogic.eu", "new_pass")
+        my_task = client.copernicus_dataset_request("cds",{
+                    "datasetname" : "reanalysis-era5-pressure-levels",
+                    "body" :{
+                              "date": "2017-12-01/2017-12-31",
+                              "format": "grib",
+                              "pressure_level": "1000",
+                              "product_type": "reanalysis",
+                              "time": "12:00",
+                              "variable": "temperature"
+                            }
+                } )
+        print(my_task.status)

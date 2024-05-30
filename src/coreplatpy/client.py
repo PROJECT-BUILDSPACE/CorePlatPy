@@ -1,6 +1,6 @@
 from .models import (
     UpdateUser, LoginParams, BearerToken, ErrorReport, UserAttrs, UserData,
-    Organization, Bucket, Folder, RoleUpdate, Role
+    Organization, Bucket, Folder, RoleUpdate, Role, File
 )
 from .account import (
     authenticate_sync, update_info, get_user_data,
@@ -11,6 +11,10 @@ from .account import (
 
 from .storage import (
     create_bucket, get_folder_by_id
+)
+
+from .copernicus import(
+    get_list, get_form, get_status, post_dataset, CopernicusDetails, CopernicusTask
 )
 
 import getpass
@@ -261,11 +265,30 @@ class Client:
         print(folder)
         return folder
 
-    def download_copernicus_dataset(self):
+    def list_copernicus_resources_per_service(self, service:str):
+        resource_list = get_list(self.api_url, service, self.api_key)
+        print(resource_list)
         return
 
-    def get_download_status(self):
+    def get_copernicus_form_for_resource(self,  service:str, dataset:str):
+        dataset_form = get_form(self.api_url, service, dataset, self.api_key)
+        print(dataset_form.model_dump_json())
         return
 
-    def list_copernicus_resources(self):
+    def copernicus_dataset_request(self, service:str, body:any) -> Union[CopernicusDetails, None]:
+        new_task = post_dataset(self.api_url, body, service, self.api_key)
+        print(new_task.model_dump_json())
+        return new_task
+
+    def check_download_status(self, task_id:str) -> Union[CopernicusTask, None]:
+        complete_task = get_status(self.api_url, task_id, self.api_key)
+        print(complete_task.status)
+        #if returns complete then proceeds to download dataset to cop bucket
+        return complete_task
+
+    def download_copernicus_dataset(self, task_id:str) -> Union[File, None]:
+        #copy download file from above xd
+        #is download file not implemented?
+        #GET COPERNICUS BUCKET...
+
         return

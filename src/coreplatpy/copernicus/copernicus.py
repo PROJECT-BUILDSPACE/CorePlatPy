@@ -41,9 +41,9 @@ def get_status(baseurl: str, task_id: str, token: str) -> Union[CopernicusTask, 
     return CopernicusTask.model_validate(response)
 
 
-def post_dataset(baseurl: str, body: Details, token: str) -> Union[CopernicusDetails, ErrorReport]:
+def post_dataset(baseurl: str, body: Details, service: str, token: str) -> Union[CopernicusDetails, ErrorReport]:
 
-    uri = baseurl + endpoint + "/dataset"
+    uri = baseurl + endpoint + '/' + service + "/dataset"
     data = body.model_dump_json(by_alias=True)
     head = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}
 
