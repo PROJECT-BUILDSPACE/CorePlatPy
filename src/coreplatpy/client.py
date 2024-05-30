@@ -6,7 +6,7 @@ from .account import (
     authenticate_sync, update_info, get_user_data,
     post_organization, get_user_organizations,
     post_new_group, delete_group,
-    update_role, get_role
+    update_role, get_role, get_organization_by_id, get_organization_by_name
 )
 
 from .storage import (
@@ -100,6 +100,7 @@ class Client:
         :param new_attributes: dict (should follow the UserAttrs model)
         """
         try:
+            # attributes = UserAttrs.model_validate(new_attributes.attributes)
             attributes = UserAttrs.model_validate(new_attributes)
             update_user = UpdateUser(attributes=attributes)
         except Exception as e:
@@ -154,14 +155,14 @@ class Client:
     def get_my_organizations(self) -> Union[List[Organization], None]:
         return (get_user_organizations(self.account_url, self.api_key))
 
-    def update_user_groups(self, group_id: str, new_org_data: dict) -> Union[Organization, None]:
+    def update_user_groups(self, group_name: str, new_org_data: dict) -> Union[Organization, None]:
         """
         Join the user in a new group.
 
         Parameters
         ----------
-        group_id : str
-            ID of the referring group.
+        group_name : str
+            Name of the referring group.
         new_org_data : dict
             New data for updating the organization.
 
@@ -172,7 +173,7 @@ class Client:
         """
         try:
             org = Organization.model_validate(new_org_data)
-            resp = post_new_group(self.account_url, group_id, org, self.api_key)
+            resp = post_new_group(self.account_url, group_name, org, self.api_key)
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
                 return None
@@ -181,21 +182,21 @@ class Client:
             print("Unexpected Error: " + str(e))
             raise
 
-    def groups_cleaning(self, group_id: str) -> bool:
+    def groups_cleaning(self, group_name: str) -> bool:
         """
         Delete an organization by its group ID.
 
         Parameters
         ----------
-        group_id : str
-            ID of the organization to delete.
+        group_name : str
+            Name of the organization to delete.
 
         Returns
         -------
         bool : True if successful, False if an error occurs.
         """
         try:
-            resp = delete_group(self.account_url, group_id, self.api_key)
+            resp = delete_group(self.account_url, group_name, self.api_key)
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
                 return False
@@ -204,14 +205,14 @@ class Client:
             print("Unexpected Error: " + str(e))
             raise
 
-    def update_group_role(self, group_id: str, new_role_data: dict) -> bool:
+    def update_group_role(self, group_name: str, new_role_data: dict) -> bool:
         """
         Update a role for a specific group by its ID.
 
         Parameters
         ----------
-        group_id : str
-            ID of the group to update the role for.
+        group_name : str
+            Name of the group to update the role for.
         new_role_data : dict
             Dictionary containing the updated role data.
 
@@ -220,8 +221,14 @@ class Client:
         bool : True if successful, False if an error occurs.
         """
         try:
+            group = get_organization_by_name(self.account_url, group_name, self.api_key)
+        except Exception as e:
+            print("Unexpected Error: " + str(e))
+            raise
+
+        try:
             role_update = RoleUpdate.model_validate(new_role_data)
-            resp = update_role(self.account_url, group_id, role_update, self.api_key)
+            resp = update_role(self.account_url, group.id, role_update, self.api_key)
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
                 return False
@@ -230,14 +237,14 @@ class Client:
             print("Unexpected Error: " + str(e))
             raise
 
-    def get_group_role(self, group_id: str) -> Union[Role, None]:
+    def get_group_role(self, group_name: str) -> Union[Role, None]:
         """
         Retrieve a role for a specific group by its ID.
 
         Parameters
         ----------
-        group_id : str
-            ID of the group to retrieve the role for.
+        group_name : str
+            Name of the group to retrieve the role for.
 
         Returns
         -------
@@ -245,7 +252,13 @@ class Client:
         None : If an error occurs.
         """
         try:
-            resp = get_role(self.account_url, group_id, self.api_key)
+            group = get_organization_by_name(self.account_url, group_name, self.api_key)
+        except Exception as e:
+            print("Unexpected Error: " + str(e))
+            raise
+
+        try:
+            resp = get_role(self.account_url, group.id, self.api_key)
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
                 return None

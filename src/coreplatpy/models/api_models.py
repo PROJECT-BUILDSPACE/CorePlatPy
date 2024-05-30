@@ -162,11 +162,11 @@ class Folder(BaseModel):
     def share_with_organizations(self, organizations: List[str]):
         from .generic_models import ErrorReport
         from .account_models import Organization
-        from ..account.group_api import post_organization, get_organization_info, get_organization_members
+        from ..account.group_api import post_organization, get_organization_by_id, get_organization_members, get_organization_by_name
         from ..utils.helpers import preety_print_error
         from ..storage.buckets import create_bucket
 
-        user_org = get_organization_info(self.client_params['account_url'], self.ancestors[0], self.client_params['api_key'])
+        user_org = get_organization_by_id(self.client_params['account_url'], self.ancestors[0], self.client_params['api_key'])
         if isinstance(user_org, ErrorReport):
             preety_print_error(user_org)
             return None
@@ -182,10 +182,10 @@ class Folder(BaseModel):
 
         resp = post_organization(self.client_params['account_url'], new_org, self.client_params['api_key'])
         if isinstance(resp, ErrorReport):
-            # if resp.status == 409:
-            #     resp = ()
-            preety_print_error(resp)
-            return None
+            if resp.status == 409:
+                resp = get_organization_by_name(self.client_params['account_url'], new_name, self.client_params['api_key'])
+            # preety_print_error(resp)
+            # return None
 
         orgId = resp.id
         bucket = Bucket(_id=orgId, name=new_name)

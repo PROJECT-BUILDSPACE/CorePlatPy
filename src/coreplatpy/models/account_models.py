@@ -27,7 +27,6 @@ class UpdateUser(BaseModel):
     attributes: Optional[UserAttrs] = None
     password: Optional[str] = None
 
-
 class RealmAccess(BaseModel):
     roles: List[str]
 
