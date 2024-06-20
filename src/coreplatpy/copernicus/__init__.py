@@ -1,1 +1,1 @@
-from copernicus import *
+from .copernicus import *

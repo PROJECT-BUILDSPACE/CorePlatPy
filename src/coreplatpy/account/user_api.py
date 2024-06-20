@@ -20,7 +20,9 @@ def authenticate_sync(baseurl: str, login_params: LoginParams) -> Union[AccessGr
 
 def update_info(baseurl: str, update: UpdateUser, token: str) -> Union[ErrorReport, None]:
     uri = baseurl + endpoint
-    data = update.model_dump(exclude_unset=True, exclude_none=True)
+    # data = update.model_dump(exclude_unset=True, exclude_none=True)
+    data = update.model_dump(exclude_none=True)
+    print("Payload Data:", data)
     head = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}
 
     response = safe_json_request('PUT', uri, data, head)

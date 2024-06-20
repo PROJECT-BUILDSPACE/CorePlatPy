@@ -1,6 +1,6 @@
 from .models import (
     UpdateUser, LoginParams, BearerToken, ErrorReport, UserAttrs, UserData,
-    Organization, Bucket, Folder, RoleUpdate, Role, File
+    Organization, Bucket, Folder, RoleUpdate, Role, File, JoinGroupBody
 )
 from .account import (
     authenticate_sync, update_info, get_user_data,
@@ -10,7 +10,7 @@ from .account import (
 )
 
 from .storage import (
-    create_bucket, get_folder_by_id
+    create_bucket, get_folder_by_id, get_folder_by_name
 )
 
 from .copernicus import(
@@ -100,8 +100,9 @@ class Client:
         :param new_attributes: dict (should follow the UserAttrs model)
         """
         try:
-            # attributes = UserAttrs.model_validate(new_attributes.attributes)
+
             attributes = UserAttrs.model_validate(new_attributes)
+            print("Validated Attributes:", attributes)
             update_user = UpdateUser(attributes=attributes)
         except Exception as e:
             print("Unexpected Error: ", str(e))
@@ -155,46 +156,24 @@ class Client:
     def get_my_organizations(self) -> Union[List[Organization], None]:
         return (get_user_organizations(self.account_url, self.api_key))
 
-    def update_user_groups(self, group_name: str, new_org_data: dict) -> Union[Organization, None]:
-        """
-        Join the user in a new group.
-
-        Parameters
-        ----------
-        group_name : str
-            Name of the referring group.
-        new_org_data : dict
-            New data for updating the organization.
-
-        Returns
-        -------
-        Organization : The updated organization if successful.
-        None : If an error occurs.
-        """
+    def add_user_to_group(self, group_name: str, user_data: dict) -> bool:
         try:
-            org = Organization.model_validate(new_org_data)
-            resp = post_new_group(self.account_url, group_name, org, self.api_key)
+            body = {
+                "users": [{email: {"admin": True}} if role == 'admin' else {email: {"admin": False}} for email, role in
+                          user_data.items()]}
+
+            data = JoinGroupBody.model_validate(body)
+            resp = post_new_group(self.account_url, group_name, data, self.api_key)
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
-                return None
-            return resp
+                return False
+            return True
         except Exception as e:
             print("Unexpected Error: " + str(e))
             raise
 
     def groups_cleaning(self, group_name: str) -> bool:
-        """
-        Delete an organization by its group ID.
 
-        Parameters
-        ----------
-        group_name : str
-            Name of the organization to delete.
-
-        Returns
-        -------
-        bool : True if successful, False if an error occurs.
-        """
         try:
             resp = delete_group(self.account_url, group_name, self.api_key)
             if isinstance(resp, ErrorReport):
@@ -205,71 +184,67 @@ class Client:
             print("Unexpected Error: " + str(e))
             raise
 
-    def update_group_role(self, group_name: str, new_role_data: dict) -> bool:
-        """
-        Update a role for a specific group by its ID.
+    # def update_group_role(self, group_name: str, new_role_data: dict) -> bool:
+    #     try:
+    #         group = get_organization_by_name(self.account_url, group_name, self.api_key)
+    #         if isinstance(group, ErrorReport):
+    #             preety_print_error(group)
+    #             return False
+    #         print("Group:", group)
+    #     except Exception as e:
+    #         print("Unexpected Error while getting group:", str(e))
+    #         raise
+    #
+    #     try:
+    #         role_update = RoleUpdate.model_validate(new_role_data)
+    #         print("Role Update Data:", role_update)
+    #
+    #         resp = update_role(self.account_url, group.id, role_update, self.api_key)
+    #         print("Update Role Response:", resp)
+    #
+    #         if isinstance(resp, ErrorReport):
+    #             preety_print_error(resp)
+    #             return False
+    #         return True
+    #     except Exception as e:
+    #         print("Unexpected Error while updating role:", str(e))
+    #         raise
 
-        Parameters
-        ----------
-        group_name : str
-            Name of the group to update the role for.
-        new_role_data : dict
-            Dictionary containing the updated role data.
-
-        Returns
-        -------
-        bool : True if successful, False if an error occurs.
-        """
+    def get_group_role(self, group_name: str):
+        """Get the role of a group."""
         try:
             group = get_organization_by_name(self.account_url, group_name, self.api_key)
-        except Exception as e:
-            print("Unexpected Error: " + str(e))
-            raise
+            if isinstance(group, ErrorReport):
+                preety_print_error(group)
+                return group
 
-        try:
-            role_update = RoleUpdate.model_validate(new_role_data)
-            resp = update_role(self.account_url, group.id, role_update, self.api_key)
-            if isinstance(resp, ErrorReport):
-                preety_print_error(resp)
-                return False
-            return True
-        except Exception as e:
-            print("Unexpected Error: " + str(e))
-            raise
-
-    def get_group_role(self, group_name: str) -> Union[Role, None]:
-        """
-        Retrieve a role for a specific group by its ID.
-
-        Parameters
-        ----------
-        group_name : str
-            Name of the group to retrieve the role for.
-
-        Returns
-        -------
-        Role : The role information if successful.
-        None : If an error occurs.
-        """
-        try:
-            group = get_organization_by_name(self.account_url, group_name, self.api_key)
-        except Exception as e:
-            print("Unexpected Error: " + str(e))
-            raise
-
-        try:
             resp = get_role(self.account_url, group.id, self.api_key)
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
-                return None
+                return resp
+
             return resp
-        except Exception as e:
-            print("Unexpected Error: " + str(e))
+
+        except AttributeError as e:
+            print(f"AttributeError: {e}")
             raise
 
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            raise
 
-    def get_folder(self, folder_id:str) -> Union[Folder, None]:
+    def folder_acquisition(self, folder_id: str) -> Union[Folder, None]:
         folder = get_folder_by_id(self.api_url, folder_id, self.api_key)
+        if isinstance(folder, ErrorReport):
+            preety_print_error(folder)
+            return None
+
+        folder.client_params = self.__get_instance_variables__()
+        print(folder)
+        return folder
+
+    def folder_acquisition_by_name(self, folder_name: str) -> Union[Folder, None]:
+        folder = get_folder_by_name(self.api_url, folder_name, self.api_key)
         if isinstance(folder, ErrorReport):
             preety_print_error(folder)
             return None
