@@ -3,6 +3,7 @@ from requests import Response
 from ..models import ErrorReport
 from typing import Union
 import requests
+from ..globals.globals import Globals
 
 
 

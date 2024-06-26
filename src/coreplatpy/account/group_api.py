@@ -35,8 +35,8 @@ def post_new_group(baseurl: str, group_name: str, user_data: JoinGroupBody, toke
     return response
 
 
-def delete_group(baseurl: str, group_name: str, token: str) -> Union[None, ErrorReport]:
-    uri = baseurl + endpoint + f"{group_name}"
+def delete_group(baseurl: str, group_id: str, token: str) -> Union[None, ErrorReport]:
+    uri = baseurl + endpoint + f"id/{group_id}"
     head = {'Authorization': f'Bearer {token}'}
 
     response = safe_json_request('DELETE', uri, None, head)
@@ -86,6 +86,4 @@ def get_organization_members(baseurl: str, organization_name: str, token:str) ->
     head = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}
 
     response = safe_json_request('GET', uri, data, head)
-    if isinstance(response, ErrorReport):
-        return response
     return response

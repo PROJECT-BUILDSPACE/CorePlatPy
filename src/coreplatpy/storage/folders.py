@@ -6,7 +6,7 @@ from ..utils import safe_data_request
 
 endpoint = "folder"
 
-def get_folder_by_id(baseurl: str, folder_id: str, token: str) -> Union[Folder, ErrorReport]:
+def folder_acquisition_by_id(baseurl: str, folder_id: str, token: str) -> Union[Folder, ErrorReport]:
     uri = baseurl + endpoint + f'?id={folder_id}'
     data = None
     head = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}
@@ -17,7 +17,7 @@ def get_folder_by_id(baseurl: str, folder_id: str, token: str) -> Union[Folder, 
     return Folder.model_validate(response)
 
 
-def get_folder_by_name(baseurl: str, folder_name: str, token: str) -> Union[Folder, ErrorReport]:
+def folder_acquisition_by_name(baseurl: str, folder_name: str, token: str) -> Union[Folder, ErrorReport]:
     uri = baseurl + endpoint + f"?path={folder_name}"
     data = None
     head = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}

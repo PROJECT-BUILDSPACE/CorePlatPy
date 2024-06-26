@@ -1,16 +1,16 @@
 from .models import (
     UpdateUser, LoginParams, BearerToken, ErrorReport, UserAttrs, UserData,
-    Organization, Bucket, Folder, RoleUpdate, Role, File, JoinGroupBody
+    Organization, Bucket, Folder, RoleUpdate, Role, File, JoinGroupBody, UserRegistration
 )
 from .account import (
     authenticate_sync, update_info, get_user_data,
     post_organization, get_user_organizations,
     post_new_group, delete_group,
-    update_role, get_role, get_organization_by_id, get_organization_by_name
+    update_role, get_role, get_organization_by_id, get_organization_by_name, post_picture, register
 )
 
 from .storage import (
-    create_bucket, get_folder_by_id, get_folder_by_name
+    create_bucket, folder_acquisition_by_id, folder_acquisition_by_name, delete_bucket
 )
 
 from .copernicus import(
@@ -21,6 +21,7 @@ import getpass
 from jwt import decode
 from .utils import preety_print_error
 from typing import Union, List
+import uuid
 
 
 class Client:
@@ -38,9 +39,56 @@ class Client:
         self.account_url = account_url or 'https://account-buildspace.euinno.eu/'
         self.api_key = None
         self.user_id = None
+        self.__pictures__ = "pictures"
 
     def __get_instance_variables__(self):
         return {k: v for k, v in self.__dict__.items() if not k.startswith('__') and not callable(v)}
+
+    def register(self):
+        """
+         Register new User to Core Platform.
+         """
+        try:
+            email = input("Email: ")
+            firstName = input("First Name: ")
+            lastName = input("Last Name: ")
+            # password = input("Last Name: ")
+            # password_confirm = input("Last Name: ")
+            password = getpass.getpass("Password: ")
+            password_confirm = getpass.getpass("Confirm Password: ")
+
+            if password_confirm!=password:
+                raise ValueError("Passwords do not match!")
+
+            params = UserRegistration(email=email,
+                                      first_name=firstName,
+                                      last_name=lastName,
+                                      password=password,
+                                      picture=None
+                                      )
+
+            registration = register(self.account_url, params)
+            if isinstance(registration, ErrorReport):
+                preety_print_error(registration)
+                raise
+            else:
+                self.login(email, password)
+
+            picture_path = input("Profile picture path (can be omitted): ")
+            picture = None
+            if picture_path != "":
+                with open(picture_path, 'rb') as f:
+                    picture = f.read()
+                    if len(picture) >  5 * 1024 * 1024:  # 5MB in bytes
+                        raise Warning('Picture is larger than 5MB. Using default.')
+                    unique_id = str(uuid.uuid4())
+                    resp = post_picture(self.account_url, picture, unique_id, self.api_key)
+                    if isinstance(resp, ErrorReport):
+                        preety_print_error(resp)
+                        raise
+        except Exception as e:
+            print("Error: " + str(e))
+            raise
 
     def authenticate(self):
         """
@@ -102,7 +150,6 @@ class Client:
         try:
 
             attributes = UserAttrs.model_validate(new_attributes)
-            print("Validated Attributes:", attributes)
             update_user = UpdateUser(attributes=attributes)
         except Exception as e:
             print("Unexpected Error: ", str(e))
@@ -172,17 +219,28 @@ class Client:
             print("Unexpected Error: " + str(e))
             raise
 
-    def groups_cleaning(self, group_name: str) -> bool:
-
+    def remove_organization(self, organization_name: str) -> bool:
         try:
-            resp = delete_group(self.account_url, group_name, self.api_key)
+            organization = get_organization_by_name(self.account_url, organization_name, self.api_key)
+            if isinstance(organization, ErrorReport):
+                preety_print_error(organization)
+                return False
+
+            resp = delete_bucket(self.api_url, organization.id, self.api_key)
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
                 return False
-            return True
+
+            resp = delete_group(self.account_url, organization.id, self.api_key)
+            if isinstance(resp, ErrorReport):
+                preety_print_error(resp)
+                return False
+
         except Exception as e:
             print("Unexpected Error: " + str(e))
             raise
+        else:
+            return True
 
     # def update_group_role(self, group_name: str, new_role_data: dict) -> bool:
     #     try:
@@ -233,25 +291,27 @@ class Client:
             print(f"Unexpected error: {e}")
             raise
 
-    def folder_acquisition(self, folder_id: str) -> Union[Folder, None]:
-        folder = get_folder_by_id(self.api_url, folder_id, self.api_key)
-        if isinstance(folder, ErrorReport):
-            preety_print_error(folder)
+    def get_folder(self, folder_name: str = None, folder_id: str = None) -> Union[Folder, None]:
+        if (folder_id is None and folder_name is None) or (folder_id is not None and folder_name is not None):
+            error = ErrorReport(reason="Parameters folder_id and folder_name are mutually exclusive, meaning you can (and must) pass value only to one of them")
+            preety_print_error(error)
             return None
+        elif folder_id:
+            folder = folder_acquisition_by_id(self.api_url, folder_id, self.api_key)
+            if isinstance(folder, ErrorReport):
+                preety_print_error(folder)
+                return None
+            folder.client_params = self.__get_instance_variables__()
+            return folder
+        else:
+            folder = folder_acquisition_by_name(self.api_url, folder_name, self.api_key)
+            if isinstance(folder, ErrorReport):
+                preety_print_error(folder)
+                return None
 
-        folder.client_params = self.__get_instance_variables__()
-        print(folder)
-        return folder
+            folder.client_params = self.__get_instance_variables__()
+            return folder
 
-    def folder_acquisition_by_name(self, folder_name: str) -> Union[Folder, None]:
-        folder = get_folder_by_name(self.api_url, folder_name, self.api_key)
-        if isinstance(folder, ErrorReport):
-            preety_print_error(folder)
-            return None
-
-        folder.client_params = self.__get_instance_variables__()
-        print(folder)
-        return folder
 
     def list_copernicus_resources_per_service(self, service:str):
         resource_list = get_list(self.api_url, service, self.api_key)
@@ -280,3 +340,13 @@ class Client:
         #GET COPERNICUS BUCKET...
 
         return
+
+    def upload_picture(self, picture_path):
+        with open(picture_path, 'rb') as f:
+            picture = f.read()
+            if len(picture) > 5 * 1024 * 1024:  # 5MB in bytes
+                raise Warning('Picture is larger than 5MB. Using default.')
+            else:
+                user_data = decode(self.api_key, options={"verify_signature": False})
+                return post_picture(self.account_url, picture, user_data['sub'], self.api_key)
+        return False
