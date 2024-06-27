@@ -60,11 +60,7 @@ def get_organization_by_name(baseurl: str, group_name: str, token: str) -> Union
     data = None
     head = {'Authorization': f'Bearer {token}'}
 
-    # print(f"Requesting URI: {uri}")
-    # print(f"Headers: {head}")
-
     response = safe_json_request('GET', uri, data, head)
-    # print(f"Response: {response}")
 
     if isinstance(response, ErrorReport):
         return response

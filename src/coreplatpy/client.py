@@ -17,11 +17,14 @@ from .copernicus import(
     get_list, get_form, get_status, post_dataset, CopernicusDetails, CopernicusTask
 )
 
+from .utils import ensure_token
+
 import getpass
 from jwt import decode
 from .utils import preety_print_error
 from typing import Union, List
 import uuid
+from datetime import datetime
 
 
 class Client:
@@ -39,7 +42,9 @@ class Client:
         self.account_url = account_url or 'https://account-buildspace.euinno.eu/'
         self.api_key = None
         self.user_id = None
-        self.__pictures__ = "pictures"
+        self.refresh_token = None
+        self.expires_at = None
+        self.pictures = "pictures"
 
     def __get_instance_variables__(self):
         return {k: v for k, v in self.__dict__.items() if not k.startswith('__') and not callable(v)}
@@ -103,6 +108,8 @@ class Client:
                 preety_print_error(access)
             else:
                 self.api_key = access.access_token
+                self.refresh_token = access.refresh_token
+                self.expires_at =  datetime.utcfromtimestamp(decode(access.access_token, options={"verify_signature": False})['exp'])
         except Exception as e:
             print("Error: " + str(e))
             raise
@@ -123,10 +130,13 @@ class Client:
                 preety_print_error(access)
             else:
                 self.api_key = access.access_token
+                self.refresh_token = access.refresh_token
+                self.expires_at =  datetime.utcfromtimestamp(decode(access.access_token, options={"verify_signature": False})['exp'])
         except Exception as e:
             print("Unexpected Error: " + str(e))
             raise
 
+    @ensure_token
     def get_my_user(self) -> Union[UserData, None]:
         """
         Get the user data, once logged in.
@@ -142,6 +152,7 @@ class Client:
             return None
         return resp
 
+    @ensure_token
     def update_my_attributes(self, new_attributes: dict):
         """
         Update your user's attributes
@@ -158,6 +169,7 @@ class Client:
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
 
+    @ensure_token
     def update_my_password(self, new_password: str):
         """
         Update the user's password
@@ -173,6 +185,7 @@ class Client:
                 preety_print_error(resp)
         
 
+    @ensure_token
     def create_organization(self, organization: str, path: str = '/', sub_orgs: List[str] = [], attributes: dict = {}, org_id: str = None) -> Union[Organization, None]:
         """
         Create Organization.
@@ -200,9 +213,11 @@ class Client:
 
         return resp
 
+    @ensure_token
     def get_my_organizations(self) -> Union[List[Organization], None]:
         return (get_user_organizations(self.account_url, self.api_key))
 
+    @ensure_token
     def add_user_to_group(self, group_name: str, user_data: dict) -> bool:
         try:
             body = {
@@ -219,6 +234,7 @@ class Client:
             print("Unexpected Error: " + str(e))
             raise
 
+    @ensure_token
     def remove_organization(self, organization_name: str) -> bool:
         try:
             organization = get_organization_by_name(self.account_url, organization_name, self.api_key)
@@ -268,6 +284,7 @@ class Client:
     #         print("Unexpected Error while updating role:", str(e))
     #         raise
 
+    @ensure_token
     def get_group_role(self, group_name: str):
         """Get the role of a group."""
         try:
@@ -291,6 +308,7 @@ class Client:
             print(f"Unexpected error: {e}")
             raise
 
+    @ensure_token
     def get_folder(self, folder_name: str = None, folder_id: str = None) -> Union[Folder, None]:
         if (folder_id is None and folder_name is None) or (folder_id is not None and folder_name is not None):
             error = ErrorReport(reason="Parameters folder_id and folder_name are mutually exclusive, meaning you can (and must) pass value only to one of them")
@@ -313,27 +331,28 @@ class Client:
             return folder
 
 
+    @ensure_token
     def list_copernicus_resources_per_service(self, service:str):
         resource_list = get_list(self.api_url, service, self.api_key)
-        print(resource_list)
         return
 
+    @ensure_token
     def get_copernicus_form_for_resource(self,  service:str, dataset:str):
         dataset_form = get_form(self.api_url, service, dataset, self.api_key)
-        print(dataset_form.model_dump_json())
         return
 
+    @ensure_token
     def copernicus_dataset_request(self, service:str, body:any) -> Union[CopernicusDetails, None]:
         new_task = post_dataset(self.api_url, body, service, self.api_key)
-        print(new_task.model_dump_json())
         return new_task
 
+    @ensure_token
     def check_download_status(self, task_id:str) -> Union[CopernicusTask, None]:
         complete_task = get_status(self.api_url, task_id, self.api_key)
-        print(complete_task.status)
         #if returns complete then proceeds to download dataset to cop bucket
         return complete_task
 
+    @ensure_token
     def download_copernicus_dataset(self, task_id:str) -> Union[File, None]:
         #copy download file from above xd
         #is download file not implemented?
@@ -341,6 +360,7 @@ class Client:
 
         return
 
+    @ensure_token
     def upload_picture(self, picture_path):
         with open(picture_path, 'rb') as f:
             picture = f.read()

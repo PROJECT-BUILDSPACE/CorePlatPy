@@ -13,7 +13,6 @@ def authenticate_sync(baseurl: str, login_params: LoginParams) -> Union[AccessGr
     head = {'Content-Type': 'application/x-www-form-urlencoded'}
 
     response = safe_login(uri ,data, head)
-
     if isinstance(response,ErrorReport):
         return response
     return AccessGranted.model_validate(response)
@@ -58,3 +57,5 @@ def post_picture(baseurl: str, part_raw: bytes, file_id, token: str):
     if isinstance(response, ErrorReport):
         raise ValueError(f"HTTP Status: {response.status} \nHTTP Reason: {response.reason} \nAPI Message: {response.message} \nAPI Status Code: {response.internal_status}")
     return True
+
+

@@ -19,7 +19,6 @@ def initialize_upload(baseurl: str, file: File, total: int, token: str) -> Union
 def send_part(baseurl: str, part_raw: bytes, index: int, file_id, token: str) -> Union[File, ErrorReport]:
     uri = baseurl + f'{endpoint}/{file_id}?part={index}'
     headers = {'Content-Type': 'application/octet-stream', 'Authorization': f'Bearer {token}', 'Content-Length': f'{len(part_raw)}'}
-    print(len(part_raw))
     response = safe_data_request('POST', uri, headers=headers, data=part_raw)
     if isinstance(response, ErrorReport):
         raise ValueError(f"HTTP Status: {response.status} \nHTTP Reason: {response.reason} \nAPI Message: {response.message} \nAPI Status Code: {response.internal_status}")

@@ -1,10 +1,12 @@
 from jwt import decode
 from requests import Response
-from ..models import ErrorReport
+from ..models.generic_models import ErrorReport
 from typing import Union
 import requests
 from ..globals.globals import Globals
-
+from functools import wraps
+from datetime import datetime
+import requests
 
 
 def respond_with_error(response: Response) -> ErrorReport:
@@ -215,3 +217,33 @@ def split_file_chunks(file_path, num_chunks, chunk_size_mb = 1 * 1024 * 1024 ):
             chunk = f.read(chunk_size_mb)
             # Yield the chunk
             yield chunk
+
+def ensure_token(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        try:
+            if datetime.utcnow() >= self.expires_at:
+                try:
+                    response = requests.post(self.account_url + 'user/refresh', data={'refresh_token': self.refresh_token})
+                    response.raise_for_status()
+                except requests.RequestException as e:
+                    print(f"Failed to refresh access token: {e}")
+                else:
+                    self.api_key = response.json()['access_token']
+                    self.refresh_token = response.json()['refresh_token']
+                    self.expires_at = datetime.utcfromtimestamp(decode(self.api_key, options={"verify_signature": False})['exp'])
+        except AttributeError:
+            if datetime.utcnow() >= self.client_params['expires_at']:
+                try:
+                    response = requests.post(self.client_params['account_url'] + 'user/refresh', data={'refresh_token': self.client_params['refresh_token']})
+                    response.raise_for_status()
+                except requests.RequestException as e:
+                    print(f"Failed to refresh access token: {e}")
+                else:
+                    self.client_params['api_key'] = response.json()['access_token']
+                    self.client_params['refresh_token'] = response.json()['refresh_token']
+                    self.client_params['expires_at'] = datetime.utcfromtimestamp(decode(self.client_params['api_key'], options={"verify_signature": False})['exp'])
+        except Exception as e:
+            raise Exception(e)
+        return func(self, *args, **kwargs)
+    return wrapper

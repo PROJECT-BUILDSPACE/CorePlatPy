@@ -5,8 +5,9 @@ from datetime import datetime
 import os
 from tqdm import tqdm
 from threading import Thread
+from ..utils import ensure_token
 
-chunk_size = 5 * 1024 * 1024
+chunk_size = 1 * 1024 * 1024
 
 
 class Bucket(BaseModel):
@@ -83,6 +84,8 @@ class Folder(BaseModel):
     size: int
 
     client_params: Optional[dict] = {}
+
+    @ensure_token
     def upload_file(self, path: str, meta: dict = None):
         from ..storage.files import initialize_upload, send_part
         from ..utils.helpers import split_file_chunks, preety_print_error
@@ -105,7 +108,7 @@ class Folder(BaseModel):
             preety_print_error(resp)
             return resp
 
-        chunks = split_file_chunks(path, num_chunks)
+        chunks = split_file_chunks(path, num_chunks, chunk_size)
         threads = []
         for i in range(1, resp.total + 1):
             thread = Thread(target=send_part, args=(self.client_params['api_url'], next(chunks), i, resp.id, self.client_params['api_key']))
@@ -115,6 +118,7 @@ class Folder(BaseModel):
         for thread in tqdm(threads, desc=f'Uploading {resp.meta.title}'):
             thread.join()
 
+    @ensure_token
     def grab_file_info(self, file_id:str = None, file_name:str = None):
         from ..storage.files import get_info
         from .generic_models import ErrorReport
@@ -137,10 +141,12 @@ class Folder(BaseModel):
 
 
 
+    @ensure_token
     def list_items(self):
         from ..storage.folders import list_folder_items
         return list_folder_items(self.client_params['api_url'], self.id, self.client_params['api_key'])
 
+    @ensure_token
     def expand_items_tree(self):
         def __iterative__call__(folder_id, level=0):
             from ..storage.folders import list_folder_items
@@ -154,8 +160,9 @@ class Folder(BaseModel):
                 resp += level * '\t' + f"    📄{item.meta.title}\n"
             return resp
 
-        return f"📁{self.meta.title}\n" + __iterative__call__(self.id)
+        print(f"📁{self.meta.title}\n" + __iterative__call__(self.id))
 
+    @ensure_token
     def save_file(self, path: str, file_id:str = None, file_name:str = None):
         from ..storage.files import get_info, get_part
         from ..storage.folders import folder_acquisition_by_name
@@ -181,6 +188,7 @@ class Folder(BaseModel):
         with open(os.path.join(path, f"{file_info.meta.title}{file_info.file_type}"), 'wb') as f:
             f.write(b''.join(results))
 
+    @ensure_token
     def download_file(self, file_id:str = None, file_name:str = None) -> bytes:
         from ..storage.files import get_info, get_part
         from ..storage.folders import folder_acquisition_by_name
@@ -206,6 +214,7 @@ class Folder(BaseModel):
         return b''.join(results)
 
 
+    @ensure_token
     def create_folder(self, name: str, description: str = ""):
         from ..storage.folders import post_folder
         meta = Meta(title=name, description=description)
@@ -213,6 +222,7 @@ class Folder(BaseModel):
         new_folder = post_folder(self.client_params['api_url'], folder, self.client_params['api_key'])
         return new_folder
 
+    @ensure_token
     def copy_to(self, destination_name:str = None, destination_id:str = None, new_name: str = None):
         from ..storage.folders import copy_folder, folder_acquisition_by_name
         from .generic_models import ErrorReport
@@ -237,6 +247,7 @@ class Folder(BaseModel):
         new_folder = copy_folder(self.client_params['api_url'], body, self.client_params['api_key'])
         return new_folder
 
+    @ensure_token
     def share_with_organizations(self, organizations: List[str]):
         from .generic_models import ErrorReport
         from .account_models import Organization, JoinGroupBody
@@ -244,7 +255,16 @@ class Folder(BaseModel):
         from ..utils.helpers import preety_print_error
         from ..storage.buckets import create_bucket
 
-        user_org = get_organization_by_id(self.client_params['account_url'], self.ancestors[0], self.client_params['api_key'])
+        try:
+            user_org = get_organization_by_id(self.client_params['account_url'], self.ancestors[0],
+                                              self.client_params['api_key'])
+        except IndexError:
+            user_org = get_organization_by_id(self.client_params['account_url'], self.id,
+                                              self.client_params['api_key'])
+        except Exception as e:
+            raise ValueError(f'Something unexpected just happend: {e}')
+            return None
+
         if isinstance(user_org, ErrorReport):
             preety_print_error(user_org)
             return None
@@ -262,8 +282,6 @@ class Folder(BaseModel):
         if isinstance(resp, ErrorReport):
             if resp.status == 409:
                 resp = get_organization_by_name(self.client_params['account_url'], new_name, self.client_params['api_key'])
-            # preety_print_error(resp)
-            # return None
 
         orgId = resp.id
         bucket = Bucket(_id=orgId, name=new_name)
@@ -281,6 +299,53 @@ class Folder(BaseModel):
             return None
 
         return self.copy_to(destination_id=orgId, new_name=self.meta.title)
+
+    @ensure_token
+    def step_into(self, folder_name: str = None, folder_id: str = None):
+        from ..storage.folders import folder_acquisition_by_id
+        from .generic_models import ErrorReport
+        from ..utils.helpers import preety_print_error
+
+        folder_id_names = {item.meta.title:item.id for item in self.list_items().folders}
+        keep_client_params = self.client_params
+
+        if (folder_id is None and folder_name is None) or (folder_id is not None and folder_name is not None):
+            error = ErrorReport(reason="Parameters folder_id and folder_name are mutually exclusive, meaning you can (and must) pass value only to one of them")
+            preety_print_error(error)
+            return
+        elif folder_id:
+            if folder_id not in folder_id_names.values():
+                error = ErrorReport(
+                    reason="Folder does not exist in current path. Consider using client.get_folder() with the provided id.")
+                preety_print_error(error)
+                return
+            go_to = folder_acquisition_by_id(self.client_params['api_url'], folder_id, self.client_params['api_key'])
+            if isinstance(go_to, ErrorReport):
+                preety_print_error(go_to)
+                return
+        else:
+            if folder_name not in folder_id_names.keys():
+                error = ErrorReport(
+                    reason="Folder does not exist in current path. Consider using folder.expand_items_tree() to double-check the folder name you provided.")
+                preety_print_error(error)
+                return
+            go_to = folder_acquisition_by_id(self.client_params['api_url'], folder_id_names[folder_name], self.client_params['api_key'])
+            if isinstance(go_to, ErrorReport):
+                preety_print_error(go_to)
+                return
+
+        self.__class__ = go_to.__class__
+        self.__dict__ = go_to.__dict__
+        self.client_params = keep_client_params
+
+    @ensure_token
+    def step_out(self, steps=1):
+        from ..storage.folders import folder_acquisition_by_name, folder_acquisition_by_id
+        keep_client_params = self.client_params
+        go_to = folder_acquisition_by_id(self.client_params['api_url'], self.ancestors[ self.level - steps ], self.client_params['api_key'])
+        self.__class__ = go_to.__class__
+        self.__dict__ = go_to.__dict__
+        self.client_params = keep_client_params
 
 class FolderList(BaseModel):
 	files: List[File]
