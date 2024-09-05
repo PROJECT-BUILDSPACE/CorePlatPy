@@ -1,6 +1,6 @@
 import requests
 from urllib.parse import urlencode
-from ..models import ErrorReport, Folder, FolderList, PostFolder, CopyModel
+from ..models import ErrorReport, Folder, FolderList, PostFolder, CopyModel, Updated
 from typing import Union
 from ..utils import safe_data_request
 
@@ -58,3 +58,23 @@ def copy_folder(baseurl: str, body: CopyModel, token: str) -> Union[Folder, Erro
     if isinstance(response, ErrorReport):
         return response
     return Folder.model_validate(response)
+
+def update_folder(baseurl: str, folder_id: str, body: Folder, token: str) -> Union[Folder, ErrorReport]:
+    uri = baseurl + endpoint + f'?id={folder_id}'
+    data = body.model_dump_json(by_alias=True)
+    # print("data: ", data)
+    head = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}
+
+    response = safe_data_request('PUT', uri, data, head)
+    if isinstance(response, ErrorReport):
+        return response
+    return Folder.model_validate(response)
+
+def delete_folder(baseurl: str, folder_id: str, token: str) -> Union[None, ErrorReport]:
+    uri = baseurl + endpoint + f'/{folder_id}'
+    head = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}
+
+    response = safe_data_request('DELETE', uri, None, head)
+    if isinstance(response, ErrorReport):
+        return response
+    return None

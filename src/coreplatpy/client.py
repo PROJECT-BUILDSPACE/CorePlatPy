@@ -1,6 +1,7 @@
 from .models import (
     UpdateUser, LoginParams, BearerToken, ErrorReport, UserAttrs, UserData,
-    Organization, Bucket, Folder, RoleUpdate, Role, File, JoinGroupBody, UserRegistration
+    Organization, Bucket, Folder, RoleUpdate, Role, File, JoinGroupBody, UserRegistration,
+    PostFolder, Updated
 )
 from .account import (
     authenticate_sync, update_info, get_user_data,
@@ -10,7 +11,8 @@ from .account import (
 )
 
 from .storage import (
-    create_bucket, folder_acquisition_by_id, folder_acquisition_by_name, delete_bucket
+    create_bucket, folder_acquisition_by_id, folder_acquisition_by_name, delete_bucket,
+    update_folder, delete_folder, get_info, delete_file, update_file
 )
 
 from .copernicus import(
@@ -109,7 +111,7 @@ class Client:
             else:
                 self.api_key = access.access_token
                 self.refresh_token = access.refresh_token
-                self.expires_at =  datetime.utcfromtimestamp(decode(access.access_token, options={"verify_signature": False})['exp'])
+                self.expires_at =  datetime.utcfromtimestamp(decode(access.access_token, options={"verify_signature": False,"verify_aud": False})['exp'])
         except Exception as e:
             print("Error: " + str(e))
             raise
@@ -131,7 +133,7 @@ class Client:
             else:
                 self.api_key = access.access_token
                 self.refresh_token = access.refresh_token
-                self.expires_at =  datetime.utcfromtimestamp(decode(access.access_token, options={"verify_signature": False})['exp'])
+                self.expires_at =  datetime.utcfromtimestamp(decode(access.access_token, options={"verify_signature": False,"verify_aud": False})['exp'])
         except Exception as e:
             print("Unexpected Error: " + str(e))
             raise
@@ -330,7 +332,6 @@ class Client:
             folder.client_params = self.__get_instance_variables__()
             return folder
 
-
     @ensure_token
     def list_copernicus_resources_per_service(self, service:str):
         resource_list = get_list(self.api_url, service, self.api_key)
@@ -367,6 +368,32 @@ class Client:
             if len(picture) > 5 * 1024 * 1024:  # 5MB in bytes
                 raise Warning('Picture is larger than 5MB. Using default.')
             else:
-                user_data = decode(self.api_key, options={"verify_signature": False})
+                user_data = decode(self.api_key, options={"verify_signature": False,"verify_aud": False})
                 return post_picture(self.account_url, picture, user_data['sub'], self.api_key)
         return False
+
+    @ensure_token
+    def del_folder(self, folder_id: str) -> bool:
+
+        try:
+            resp = delete_folder(self.api_url, folder_id, self.api_key)
+            if isinstance(resp, ErrorReport):
+                preety_print_error(resp)
+                return False
+            return True
+        except Exception as e:
+            print(f"Unexpected error while deleting folder: {e}")
+            return False
+
+    @ensure_token
+    def del_file(self, file_id: str) -> bool:
+
+        try:
+            resp = delete_file(self.api_url, file_id, self.api_key)
+            if isinstance(resp, ErrorReport):
+                preety_print_error(resp)
+                return False
+            return True
+        except Exception as e:
+            print(f"Unexpected error while deleting folder: {e}")
+            return False

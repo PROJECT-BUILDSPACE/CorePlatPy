@@ -3,7 +3,6 @@ from requests import Response
 from ..models.generic_models import ErrorReport
 from typing import Union
 import requests
-from ..globals.globals import Globals
 from functools import wraps
 from datetime import datetime
 import requests

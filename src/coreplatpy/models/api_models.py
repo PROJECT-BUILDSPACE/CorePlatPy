@@ -7,6 +7,12 @@ from tqdm import tqdm
 from threading import Thread
 from ..utils import ensure_token
 
+# from ..storage.files import update_file, delete_file
+# from ..storage.folders import update_folder, delete_folder
+
+# from ..models import ErrorReport
+# from ..utils import preety_print_error
+
 chunk_size = 1 * 1024 * 1024
 
 
@@ -346,6 +352,21 @@ class Folder(BaseModel):
         self.__class__ = go_to.__class__
         self.__dict__ = go_to.__dict__
         self.client_params = keep_client_params
+
+    @ensure_token
+    def rename_folder(self, new_name):
+        from ..storage.folders import update_folder
+        self.meta.title = new_name
+
+        return update_folder(self.client_params['api_url'], self.id, self, self.client_params['api_key'])
+
+    @ensure_token
+    def rename_file(self, new_name):
+        from ..storage.files import update_file
+        self.meta.title = new_name
+
+        return update_file(self.client_params['api_url'], self.id, self, self.client_params['api_key'])
+
 
 class FolderList(BaseModel):
 	files: List[File]

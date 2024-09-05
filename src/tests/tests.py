@@ -51,8 +51,10 @@ class TestAuthentication(unittest.TestCase):
 
 
     def test_login(self):
-        client = Client(account_url='http://localhost:5001/')
-        client.login(EMAIL1, PWD)
+        # client = Client(account_url='http://localhost:5001/')
+        client = Client(account_url='https://account-buildspace.euinno.eu/')
+
+        client.login(EMAIL1, PWD2)
         user_data = decode(client.api_key,  options={"verify_signature": False})
 
         self.assertEqual(user_data['name'], f'{FIRST_NAME} {LAST_NAME}')
@@ -94,8 +96,8 @@ class TestAuthentication(unittest.TestCase):
         client = Client()
         client.login(EMAIL1, PWD2)
 
-        org = client.create_organization(ORG + '1')
-        self.assertEqual(org.name, ORG + '1')
+        org = client.create_organization(ORG + '4')
+        self.assertEqual(org.name, ORG + '4')
 
     def test_get_user_orgs(self):
         client = Client()
@@ -110,7 +112,7 @@ class TestAuthentication(unittest.TestCase):
     def test_create_folder(self):
         client = Client()
         client.login(EMAIL1, PWD2)
-        folder = client.get_folder(folder_name = ORG + '1')
+        folder = client.get_folder(folder_name =  "Organization_1")
         new = folder.create_folder(name=FOL + '1', description="Python Client Folder Level 1")
         self.assertEqual(len(new.ancestors), len(folder.ancestors) + 1)
         self.assertEqual(new.ancestors[-1], folder.id)
@@ -328,5 +330,73 @@ class TestAuthentication(unittest.TestCase):
         folder.step_out()
         print(folder.meta.title)
         print(folder)
+
+    def test_update_folder(self):
+        client = Client()
+        client.login(EMAIL1, PWD2)
+        # client.login('isotiropoulos@singularlogic.eu', '123456789')
+
+        folder = client.get_folder(folder_id="d598293b-1eaa-42b3-bb7b-fc55ceb52457")
+        # folder = client.get_folder(folder_name="test1234567890")
+        print("folder: ", folder)
+        print("folder.id: ", folder.id)
+
+        updated_name = "Folder_Destination"
+        updated_folder = folder.rename_folder(updated_name)
+
+        new_folder = client.get_folder(folder_id="d598293b-1eaa-42b3-bb7b-fc55ceb52457")
+        print("new_folder: ", new_folder)
+
+        self.assertEqual(updated_folder.meta.title, updated_name)
+
+    def test_folder_removal(self):
+        client = Client()
+        client.login(EMAIL1, PWD2)
+
+        folder = client.get_folder(folder_name="Folder_Destination")
+        # folder = client.get_folder(folder_id="d598293b-1eaa-42b3-bb7b-fc55ceb52457")
+
+        print("folder: ", folder)
+        # print("folder_id: ", folder.id)
+        # client.del_folder(folder.id)
+        client.del_folder(folder.id)
+        # folder.del_folder(folder.id)
+
+    def test_update_file(self):
+        client = Client()
+        # client.login(EMAIL1, PWD2)
+        client.login('isotiropoulos@singularlogic.eu', '123456789')
+
+        folder = client.get_folder(folder_id="c2c7c2f7-321c-4cd3-9712-7c346e77fcbc")
+        print("folder: ", folder)
+        file = folder.grab_file_info(file_id = "1aff2306-283b-4138-999c-4d6140d6f714")
+        print("file: ", file)
+        print("file.title: ", file.meta.title)
+
+        folder.rename_file("revised_DJI_photo.jpg")
+        print("folder.title: ", folder.meta.title)
+
+
+    def test_file_removal(self):
+
+        client = Client()
+
+        client.login('isotiropoulos@singularlogic.eu', '123456789')
+
+        folder = client.get_folder(folder_id="c2c7c2f7-321c-4cd3-9712-7c346e77fcbc")
+        # print("folder: ", folder)
+        file = folder.grab_file_info(file_id="1aff2306-283b-4138-999c-4d6140d6f714")
+        print("file: ", file)
+        print("file.title: ", file.meta.title)
+
+        client.del_file(file.id)
+
+
+
+
+
+
+
+
 
 

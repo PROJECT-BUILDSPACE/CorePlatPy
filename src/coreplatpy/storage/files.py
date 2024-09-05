@@ -42,8 +42,22 @@ def get_info(baseurl: str, file_id: str, token: str) -> Union[File, ErrorReport]
     if isinstance(response, ErrorReport):
         return response
     return File.model_validate(response)
-def delete_file(baseurl: str, file_id: str, token: str) -> Union[File, ErrorReport]:
-    return
 
-def update_file(baseurl: str, file_id: str, token: str) -> Union[File, ErrorReport]:
-    return
+def delete_file(baseurl: str, file_id: str, token: str) -> Union[File, ErrorReport]:
+    uri = baseurl + endpoint + f'/{file_id}'
+    headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}
+
+    response = safe_data_request('DELETE', uri, None, headers)
+    if isinstance(response, ErrorReport):
+        return response
+    return None
+
+def update_file(baseurl: str, file_id: str, body: File, token: str) -> Union[File, ErrorReport]:
+    uri = baseurl + endpoint + f'?id={file_id}'
+    data = body.model_dump_json(by_alias=True)
+    head = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}
+
+    response = safe_data_request('PUT', uri, data, head)
+    if isinstance(response, ErrorReport):
+        return response
+    return File.model_validate(response)
