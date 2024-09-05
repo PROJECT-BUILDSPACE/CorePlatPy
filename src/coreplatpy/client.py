@@ -335,12 +335,12 @@ class Client:
     @ensure_token
     def list_copernicus_resources_per_service(self, service:str):
         resource_list = get_list(self.api_url, service, self.api_key)
-        return
+        return resource_list
 
     @ensure_token
     def get_copernicus_form_for_resource(self,  service:str, dataset:str):
         dataset_form = get_form(self.api_url, service, dataset, self.api_key)
-        return
+        return dataset_form
 
     @ensure_token
     def copernicus_dataset_request(self, service:str, body:any) -> Union[CopernicusDetails, None]:

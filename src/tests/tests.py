@@ -1,4 +1,4 @@
-import unittest
+import unittest, json
 from src.coreplatpy import *
 from src.coreplatpy.models import *
 from jwt import decode
@@ -26,7 +26,7 @@ class TestAuthentication(unittest.TestCase):
         mock_getpass.side_effect = [PWD, PWD]  # Mock getpass for password and password_confirm
 
         # Initialize the Client instance
-        client = Client()
+        client = Client('http://localhost:30000/','http://localhost:5001/')
 
         # Act
         client.register()
@@ -40,7 +40,7 @@ class TestAuthentication(unittest.TestCase):
         mock_getpass.side_effect = [PWD]  # Mock getpass for password and password_confirm
 
         # Initialize the Client instance
-        client = Client()
+        client = Client('http://localhost:30000','http://localhost:5001/')
 
         # Act
         client.authenticate()
@@ -92,12 +92,21 @@ class TestAuthentication(unittest.TestCase):
         self.assertEqual(updated_user_data.attributes.country, new_country)
 
 
+    def test_create_copernicus_org(self):
+
+        client = Client('http://localhost:30000/', 'http://localhost:5001/')
+        client.login(EMAIL1, PWD)
+
+        org = client.create_organization("kwstas")
+        self.assertEqual(org.name, "kwstas")
+
     def test_create_org(self):
         client = Client()
         client.login(EMAIL1, PWD2)
 
         org = client.create_organization(ORG + '4')
         self.assertEqual(org.name, ORG + '4')
+
 
     def test_get_user_orgs(self):
         client = Client()
@@ -227,21 +236,24 @@ class TestAuthentication(unittest.TestCase):
 
 
     def test_copernicus_list(self):
-        client = Client()
-        client.login("isotiropoulos@singularlogic.eu", "new_pass")
-        client.list_copernicus_resources_per_service("cds")
-        client.list_copernicus_resources_per_service("ads")
+        client = Client('http://localhost:30000', 'http://localhost:5001/')
+        client.login(EMAIL1, PWD)
+        atm_list = client.list_copernicus_resources_per_service("ads")
+        print("atmosphere datasets list:", json.dumps(atm_list, indent=4))
+        climate_list = client.list_copernicus_resources_per_service("cds")
+        print("climate datasets list:", json.dumps(climate_list, indent=4))
         return
 
     def test_copernicus_form(self):
-        client = Client()
-        client.login("isotiropoulos@singularlogic.eu", "new_pass")
-        client.get_copernicus_form_for_resource("cds", "reanalysis-era5-pressure-levels")
+        client = Client('http://localhost:30000','http://localhost:5001/')
+        client.login(EMAIL1, PWD)
+        dataset_form= client.get_copernicus_form_for_resource("cds", "reanalysis-era5-pressure-levels")
+        print("form for selected dataset:",  json.dumps(dataset_form, indent=4))
         return
 
     def test_copernicus_dataset_request(self):
-        client = Client()
-        client.login("isotiropoulos@singularlogic.eu", "new_pass")
+        client = Client('http://localhost:30000', 'http://localhost:5001/')
+        client.login(EMAIL1, PWD)
         my_task = client.copernicus_dataset_request("cds",{
                     "datasetname" : "reanalysis-era5-pressure-levels",
                     "body" :{
@@ -254,6 +266,8 @@ class TestAuthentication(unittest.TestCase):
                             }
                 } )
         print(my_task.status)
+        status = client.check_download_status(my_task.id)
+        print("Task status: ", status)
 
     def test_update_user_groups(self):
         client = Client()
