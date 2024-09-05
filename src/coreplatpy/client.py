@@ -80,7 +80,6 @@ class Client:
                 raise
             else:
                 self.login(email, password)
-
             picture_path = input("Profile picture path (can be omitted): ")
             picture = None
             if picture_path != "":
@@ -132,8 +131,9 @@ class Client:
                 preety_print_error(access)
             else:
                 self.api_key = access.access_token
+                print(access.access_token)
                 self.refresh_token = access.refresh_token
-                self.expires_at =  datetime.utcfromtimestamp(decode(access.access_token, options={"verify_signature": False,"verify_aud": False})['exp'])
+                self.expires_at =  datetime.utcfromtimestamp(decode(access.access_token, options={"verify_signature": False, "verify_aud": False})['exp'])
         except Exception as e:
             print("Unexpected Error: " + str(e))
             raise
@@ -172,13 +172,18 @@ class Client:
                 preety_print_error(resp)
 
     @ensure_token
-    def update_my_password(self, new_password: str):
+    def update_my_password(self):
         """
         Update the user's password
-        :param new_password: str
         """
+        password = getpass.getpass("Password: ")
+        password_confirm = getpass.getpass("Confirm Password: ")
+
+        if password_confirm != password:
+            raise ValueError("Passwords do not match!")
+
         try:
-            update_user = UpdateUser(password=new_password)
+            update_user = UpdateUser(password=password)
         except Exception as e:
             print("Unexpected Error: ", str(e))
         else:
@@ -213,6 +218,18 @@ class Client:
             preety_print_error(resp)
             return None
 
+        # Refresh token to have the organization ID in attributes
+        try:
+            response = requests.post(self.account_url + 'user/refresh',
+                                     data={'refresh_token': self.refresh_token})
+            response.raise_for_status()
+        except requests.RequestException as e:
+            print(f"Failed to refresh access token: {e}")
+        else:
+            self.api_key = response.json()['access_token']
+            self.refresh_token = response.json()['refresh_token']
+            self.expires_at = datetime.utcfromtimestamp(
+                decode(self.api_key, options={"verify_signature": False})['exp'])
         return resp
 
     @ensure_token
@@ -372,18 +389,6 @@ class Client:
                 return post_picture(self.account_url, picture, user_data['sub'], self.api_key)
         return False
 
-    @ensure_token
-    def del_folder(self, folder_id: str) -> bool:
-
-        try:
-            resp = delete_folder(self.api_url, folder_id, self.api_key)
-            if isinstance(resp, ErrorReport):
-                preety_print_error(resp)
-                return False
-            return True
-        except Exception as e:
-            print(f"Unexpected error while deleting folder: {e}")
-            return False
 
     @ensure_token
     def del_file(self, file_id: str) -> bool:

@@ -5,11 +5,11 @@ from jwt import decode
 # import pytest
 from unittest.mock import patch, mock_open
 
-EMAIL1 = 'test@python.eu'
+EMAIL1 = 'lala@guest.com'
 EMAIL2 = 'test-2@python.eu'
 FIRST_NAME = 'John'
 LAST_NAME = 'Doe'
-PWD = '132456789'
+PWD = '123456789'
 PWD2 = 'password'
 
 ORG = 'Organization_'
@@ -27,7 +27,6 @@ class TestAuthentication(unittest.TestCase):
 
         # Initialize the Client instance
         client = Client()
-
         # Act
         client.register()
 
@@ -54,9 +53,9 @@ class TestAuthentication(unittest.TestCase):
         # client = Client(account_url='http://localhost:5001/')
         client = Client(account_url='https://account-buildspace.euinno.eu/')
 
-        client.login(EMAIL1, PWD2)
+        client.login(EMAIL1, PWD)
         user_data = decode(client.api_key,  options={"verify_signature": False})
-
+        print(user_data)
         self.assertEqual(user_data['name'], f'{FIRST_NAME} {LAST_NAME}')
         self.assertEqual(user_data['preferred_username'], EMAIL1)
         self.assertIn('groupIDs', user_data.keys())
@@ -64,9 +63,13 @@ class TestAuthentication(unittest.TestCase):
 
     def test_update_password(self):
         client = Client()
-        client.login(EMAIL1, PWD)
-        client.update_my_password(PWD2)
-        client.login(EMAIL1, PWD2)
+        # client.login(EMAIL1, PWD)
+        # client.update_my_password(PWD2)
+
+        client.login('isotiropoulos@singularlogic.eu', '1234')
+        client.update_my_password('123456789')
+
+        # client.login(EMAIL1, PWD2)
 
 
     def test_attributes(self):
@@ -137,6 +140,31 @@ class TestAuthentication(unittest.TestCase):
         resp = folder.upload_file('test_file.jpg',
                                   {'title': 'test-name'})
 
+
+    def test_beta_upload_file(self):
+        client = Client()
+        client.login('isotiropoulos@singularlogic.eu', '123456789')
+
+        folder = client.get_folder(folder_id='a3706d75-0642-4015-a9ff-c2703cedcf71')
+
+        resp = folder.beta_upload_file('test_file.jpg',
+                                  {'title': '3test-name'})
+
+    def test_beta_upload_folder(self):
+        import time
+
+        client = Client()
+        client.login('isotiropoulos@singularlogic.eu', '123456789')
+
+        folder = client.get_folder(folder_id = 'd5cceb0b-b9a3-4335-9bfa-b690d68c3f06')
+        start = time.time()
+
+        folder.beta_upload_folder_contents('C:\\Users\\isotiropoulos\\centralenv\\BS_SIDE_C\\DJI_202407201104_012_SIDE-C\\' )
+
+        end = time.time()
+
+        print('Serial 1GB in', round(end - start, 3), 'seconds')
+
     def test_list_folder(self):
         client = Client()
         client.login(EMAIL1, PWD2)
@@ -149,7 +177,7 @@ class TestAuthentication(unittest.TestCase):
         client = Client()
         client.login(EMAIL1, PWD2)
         folder = client.get_folder(folder_name=f"{ORG + '1'}/{FOL + '1'}")
-        file = folder.grab_file_info(file_name='test-name')
+        file = folder.get_file(file_name='test-name')
         self.assertEqual(file.meta.title, 'test-name')
         self.assertEqual(file.total, 3)
 
@@ -158,7 +186,7 @@ class TestAuthentication(unittest.TestCase):
         client.login(EMAIL1, PWD2)
         folder = client.get_folder(folder_name=f"{ORG + '1'}/{FOL + '1'}")
         file = folder.download_file(file_name='test-name')
-        file_info = folder.grab_file_info(file_name='test-name')
+        file_info = folder.get_file(file_name='test-name')
         self.assertEqual(len(file), file_info.size)
 
     def test_save_file(self):
@@ -298,11 +326,16 @@ class TestAuthentication(unittest.TestCase):
 
     def test_remove_organization(self):
         client = Client()
+
         client.login(EMAIL1, PWD2)
 
         success = client.remove_organization(ORG + '1')
         self.assertTrue(success)
 
+
+
+        success = client.remove_organization(ORG + '1')
+        self.assertTrue(success)
 
     def test_upload_picture(self):
         client = Client()
@@ -369,7 +402,7 @@ class TestAuthentication(unittest.TestCase):
 
         folder = client.get_folder(folder_id="c2c7c2f7-321c-4cd3-9712-7c346e77fcbc")
         print("folder: ", folder)
-        file = folder.grab_file_info(file_id = "1aff2306-283b-4138-999c-4d6140d6f714")
+        file = folder.get_file(file_id = "1aff2306-283b-4138-999c-4d6140d6f714")
         print("file: ", file)
         print("file.title: ", file.meta.title)
 
@@ -381,15 +414,16 @@ class TestAuthentication(unittest.TestCase):
 
         client = Client()
 
-        client.login('isotiropoulos@singularlogic.eu', '123456789')
+        client.login("example-user@example.com", "1234")
 
-        folder = client.get_folder(folder_id="c2c7c2f7-321c-4cd3-9712-7c346e77fcbc")
+        folder = client.get_folder(folder_name="Example-Organization")
         # print("folder: ", folder)
-        file = folder.grab_file_info(file_id="1aff2306-283b-4138-999c-4d6140d6f714")
-        print("file: ", file)
-        print("file.title: ", file.meta.title)
+        for f in folder.list_items().files:
+            file = folder.get_file(file_id=f.id)
+            r = file.delete()
+            print(r, f.id)
 
-        client.del_file(file.id)
+
 
 
 

@@ -59,10 +59,9 @@ def copy_folder(baseurl: str, body: CopyModel, token: str) -> Union[Folder, Erro
         return response
     return Folder.model_validate(response)
 
-def update_folder(baseurl: str, folder_id: str, body: Folder, token: str) -> Union[Folder, ErrorReport]:
-    uri = baseurl + endpoint + f'?id={folder_id}'
+def update_folder(baseurl: str, body: Folder, token: str) -> Union[Folder, ErrorReport]:
+    uri = baseurl + endpoint
     data = body.model_dump_json(by_alias=True)
-    # print("data: ", data)
     head = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}
 
     response = safe_data_request('PUT', uri, data, head)

@@ -7,14 +7,7 @@ from tqdm import tqdm
 from threading import Thread
 from ..utils import ensure_token
 
-# from ..storage.files import update_file, delete_file
-# from ..storage.folders import update_folder, delete_folder
-
-# from ..models import ErrorReport
-# from ..utils import preety_print_error
-
-chunk_size = 1 * 1024 * 1024
-
+chunk_size = 5 * 1024 * 1024
 
 class Bucket(BaseModel):
     id: str = Field(alias='_id', validation_alias='_id')
@@ -61,6 +54,130 @@ class File(BaseModel):
     size: int = 0
     total: int = 0
     copernicus_details: Optional[CopernicusDetails] = CopernicusDetails()
+
+    client_params: Optional[dict] = {}
+
+    @ensure_token
+    def save(self, path: str):
+        from ..storage.files import get_part
+
+        results = [b''] * self.total
+        threads = []
+
+        for i in range(1, self.total + 1):
+            thread = Thread(target=get_part, args=(
+            self.client_params['api_url'], self.id, results, i, self.client_params['api_key']))
+            thread.start()
+            threads.append(thread)
+
+        for thread in tqdm(threads, desc=f'Multi-Thread Download of {self.meta.title}'):
+            thread.join()
+
+        with open(os.path.join(path, f"{self.meta.title}{self.file_type}"), 'wb') as f:
+            f.write(b''.join(results))
+
+    @ensure_token
+    def download(self) -> bytes:
+        from ..storage.files import get_part
+
+        results = [b''] * self.total
+        threads = []
+
+        for i in range(1, self.total + 1):
+            thread = Thread(target=get_part, args=(
+            self.client_params['api_url'], self.id, results, i, self.client_params['api_key']))
+            thread.start()
+            threads.append(thread)
+
+        for thread in tqdm(threads, desc=f'Multi-Thread Download of {self.meta.title}'):
+            thread.join()
+
+        return b''.join(results)
+
+
+    @ensure_token
+    def rename(self, new_name):
+        """
+            Rename current file
+        """
+        from ..storage.files import update_file
+        self.meta.title = new_name
+        return update_file(self.client_params['api_url'], self, self.client_params['api_key'])
+
+
+    @ensure_token
+    def copy_to(self, destination_name:str = None, destination_id:str = None, new_name: str = None):
+        from ..storage.files import copy_file
+        from ..storage.folders import folder_acquisition_by_name
+        from .generic_models import ErrorReport
+
+        if not new_name:
+            new_name = self.meta.title
+
+        if (destination_id is None and destination_name is None) or (destination_id is not None and destination_name is not None):
+            error = ErrorReport(
+                reason="Parameters destination_id and destination_name are mutually exclusive, meaning you can (and must) pass value only to one of them")
+            preety_print_error(error)
+            return None
+        elif destination_name:
+            destination = folder_acquisition_by_name(self.client_params['api_url'], destination_name, self.client_params['api_key'])
+            if isinstance(destination, ErrorReport):
+                preety_print_error(destination)
+                return None
+            destination_id = destination.id
+        else:
+            pass
+        body = CopyModel(_id=self.id, destination=destination_id, new_name=new_name)
+        new_file = copy_file(self.client_params['api_url'], body, self.client_params['api_key'])
+        new_file.client_params = self.client_params
+        return new_file
+
+    @ensure_token
+    def move_to(self, destination_name:str = None, destination_id:str = None, new_name: str = None):
+        from ..storage.files import move_file
+        from ..storage.folders import folder_acquisition_by_name
+        from .generic_models import ErrorReport
+
+        keep_client_params = self.client_params
+
+        if not new_name:
+            new_name = self.meta.title
+
+        if (destination_id is None and destination_name is None) or (destination_id is not None and destination_name is not None):
+            error = ErrorReport(
+                reason="Parameters destination_id and destination_name are mutually exclusive, meaning you can (and must) pass value only to one of them")
+            preety_print_error(error)
+            return None
+        elif destination_name:
+            destination = folder_acquisition_by_name(self.client_params['api_url'], destination_name, self.client_params['api_key'])
+            if isinstance(destination, ErrorReport):
+                preety_print_error(destination)
+                return None
+            destination_id = destination.id
+        else:
+            pass
+        body = CopyModel(_id=self.id, destination=destination_id, new_name=new_name)
+        moved_file = move_file(self.client_params['api_url'], body, self.client_params['api_key'])
+        self.__class__ = moved_file.__class__
+        self.__dict__ = moved_file.__dict__
+        self.client_params = keep_client_params
+
+
+    @ensure_token
+    def delete(self) -> bool:
+        from ..storage.files import delete_file
+        from .generic_models import ErrorReport
+        try:
+            resp = delete_file(self.client_params['api_url'], self.id, self.client_params['api_key'])
+            if isinstance(resp, ErrorReport):
+                preety_print_error(resp)
+                return False
+            return True
+        except Exception as e:
+            print(f"Unexpected error while deleting folder: {e}")
+            return False
+
+
 
 class Part(BaseModel):
     id: str = Field(alias='_id')
@@ -125,7 +242,86 @@ class Folder(BaseModel):
             thread.join()
 
     @ensure_token
-    def grab_file_info(self, file_id:str = None, file_name:str = None):
+    def beta_upload_file(self, path: str, meta: dict = None, verbose: bool = True):
+        import concurrent.futures
+        import multiprocessing
+
+        from ..storage.files import initialize_upload, beta_send_part
+        from ..utils.helpers import split_file_chunks, preety_print_error
+        from .generic_models import ErrorReport
+
+        file_size = os.path.getsize(path)
+        num_chunks = int(file_size // chunk_size)
+        if file_size % chunk_size != 0:
+            num_chunks += 1
+
+        if meta:
+            meta = Meta.model_validate(meta)
+        else:
+            meta = Meta()
+
+        file = File(meta=meta, size=file_size, original_title=path, total=num_chunks, folder=self.id)
+        resp = initialize_upload(self.client_params['api_url'], file, num_chunks, self.client_params['api_key'])
+
+        if isinstance(resp, ErrorReport):
+            return resp
+
+        chunks = split_file_chunks(path, num_chunks, chunk_size)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+            futures = [
+                executor.submit(beta_send_part, self.client_params['api_url'], next(chunks), i, resp.id, self.client_params['api_key'])
+                for i in range(1, resp.total + 1)
+            ]
+            exc = None
+            if verbose:
+                for future in tqdm(concurrent.futures.as_completed(futures), total=resp.total):
+                    try:
+                        future.result()  # Will raise an exception if the thread has failed
+
+                    except Exception as exc:
+                        print(f'Chunk failed with exception: {exc}')
+                        break
+            else:
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        future.result()  # Will raise an exception if the thread has failed
+                    except Exception as exc:
+                        print(f'Chunk failed with exception: {exc}')
+                        break
+
+    @ensure_token
+    def beta_upload_folder_contents(self, path: str, range: range = None):
+        import concurrent.futures
+        import multiprocessing
+        with concurrent.futures.ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
+            files = os.listdir(path)
+            if range:
+                futures = [
+                    executor.submit(self.beta_upload_file, path+files[j], {'title': files[j]}, False)
+                    for j in range
+                ]
+                for future in tqdm(concurrent.futures.as_completed(futures), total=len(range)):
+                    try:
+                        future.result()  # Will raise an exception if the thread has failed
+                    except Exception as exc:
+                        print(f'Chunk failed with exception: {exc}')
+                        break
+            else:
+                futures = [
+                    executor.submit(self.beta_upload_file, path + file, {'title': file}, False)
+                    for file in files
+                ]
+                for future in tqdm(concurrent.futures.as_completed(futures), total=len(files)):
+                    try:
+                        future.result()  # Will raise an exception if the thread has failed
+                    except Exception as exc:
+                        print(f'Chunk failed with exception: {exc}')
+                        break
+
+
+    @ensure_token
+    def get_file(self, file_id:str = None, file_name:str = None):
         from ..storage.files import get_info
         from .generic_models import ErrorReport
         from ..utils import preety_print_error
@@ -143,6 +339,7 @@ class Folder(BaseModel):
         else:
             file_info = get_info(self.client_params['api_url'], file_id, self.client_params['api_key'])
 
+        file_info.client_params = self.client_params
         return file_info
 
 
@@ -175,7 +372,7 @@ class Folder(BaseModel):
         from .generic_models import ErrorReport
         from ..utils import preety_print_error
 
-        file_info = self.grab_file_info(file_name=file_name, file_id=file_id)
+        file_info = self.get_file(file_name=file_name, file_id=file_id)
 
         if isinstance(file_info, ErrorReport):
             raise ValueError('Could not find file')
@@ -201,7 +398,7 @@ class Folder(BaseModel):
         from .generic_models import ErrorReport
         from ..utils import preety_print_error
 
-        file_info = self.grab_file_info(file_name=file_name, file_id=file_id)
+        file_info = self.get_file(file_name=file_name, file_id=file_id)
 
         if isinstance(file_info, ErrorReport):
             raise ValueError('Could not find file')
@@ -307,39 +504,45 @@ class Folder(BaseModel):
         return self.copy_to(destination_id=orgId, new_name=self.meta.title)
 
     @ensure_token
-    def step_into(self, folder_name: str = None, folder_id: str = None):
+    def pop_nested_folder(self, folder_name: str = None, folder_id: str = None):
         from ..storage.folders import folder_acquisition_by_id
         from .generic_models import ErrorReport
         from ..utils.helpers import preety_print_error
 
-        folder_id_names = {item.meta.title:item.id for item in self.list_items().folders}
-        keep_client_params = self.client_params
+        folder_id_names = {item.meta.title: item.id for item in self.list_items().folders}
 
         if (folder_id is None and folder_name is None) or (folder_id is not None and folder_name is not None):
-            error = ErrorReport(reason="Parameters folder_id and folder_name are mutually exclusive, meaning you can (and must) pass value only to one of them")
+            error = ErrorReport(
+                reason="Parameters folder_id and folder_name are mutually exclusive, meaning you can (and must) pass value only to one of them")
             preety_print_error(error)
-            return
+            return None
         elif folder_id:
             if folder_id not in folder_id_names.values():
                 error = ErrorReport(
                     reason="Folder does not exist in current path. Consider using client.get_folder() with the provided id.")
                 preety_print_error(error)
                 return
-            go_to = folder_acquisition_by_id(self.client_params['api_url'], folder_id, self.client_params['api_key'])
-            if isinstance(go_to, ErrorReport):
-                preety_print_error(go_to)
-                return
+            folder = folder_acquisition_by_id(self.client_params['api_url'], folder_id, self.client_params['api_key'])
+            if isinstance(folder, ErrorReport):
+                preety_print_error(folder)
+                return None
         else:
             if folder_name not in folder_id_names.keys():
                 error = ErrorReport(
                     reason="Folder does not exist in current path. Consider using folder.expand_items_tree() to double-check the folder name you provided.")
                 preety_print_error(error)
-                return
-            go_to = folder_acquisition_by_id(self.client_params['api_url'], folder_id_names[folder_name], self.client_params['api_key'])
-            if isinstance(go_to, ErrorReport):
-                preety_print_error(go_to)
-                return
+                return None
+            folder = folder_acquisition_by_id(self.client_params['api_url'], folder_id_names[folder_name],
+                                             self.client_params['api_key'])
+            if isinstance(folder, ErrorReport):
+                preety_print_error(folder)
+                return None
+        return folder
 
+    @ensure_token
+    def step_into(self, folder_name: str = None, folder_id: str = None):
+        keep_client_params = self.client_params
+        go_to = self.pop_nested_folder(folder_name, folder_id)
         self.__class__ = go_to.__class__
         self.__dict__ = go_to.__dict__
         self.client_params = keep_client_params
@@ -354,18 +557,52 @@ class Folder(BaseModel):
         self.client_params = keep_client_params
 
     @ensure_token
-    def rename_folder(self, new_name):
+    def rename(self, new_name):
+        """
+            Rename current folder
+        """
         from ..storage.folders import update_folder
         self.meta.title = new_name
-
-        return update_folder(self.client_params['api_url'], self.id, self, self.client_params['api_key'])
+        return update_folder(self.client_params['api_url'], self, self.client_params['api_key'])
 
     @ensure_token
-    def rename_file(self, new_name):
-        from ..storage.files import update_file
-        self.meta.title = new_name
+    def rename_folder(self, folder_name, new_name):
+        """
+            Rename nested folder
+        """
+        from ..storage.folders import update_folder
 
-        return update_file(self.client_params['api_url'], self.id, self, self.client_params['api_key'])
+        folder = self.pop_nested_folder(folder_name=folder_name)
+        folder.meta.title = new_name
+
+        return update_folder(self.client_params['api_url'], folder, self.client_params['api_key'])
+
+    @ensure_token
+    def rename_file(self, file_name, new_name):
+        """
+            Rename nested file
+        """
+        from ..storage.files import update_file
+
+        file = self.get_file(file_name = file_name)
+        file.meta.title = new_name
+        return update_file(self.client_params['api_url'], file, self.client_params['api_key'])
+
+
+    @ensure_token
+    def delete(self) -> bool:
+        from ..storage.folders import delete_folder
+        from .generic_models import ErrorReport
+
+        try:
+            resp = delete_folder(self.client_params['api_url'], self.id, self.client_params['api_key'])
+            if isinstance(resp, ErrorReport):
+                preety_print_error(resp)
+                return False
+            return True
+        except Exception as e:
+            print(f"Unexpected error while deleting folder: {e}")
+            return False
 
 
 class FolderList(BaseModel):
