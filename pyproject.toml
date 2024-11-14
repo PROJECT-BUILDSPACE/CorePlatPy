@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "CorePlatPy"
-version = "1.0.1"
+version = "1.0.7"
 authors = [
   { name="Iason Sotiropoulos", email="isotiropoulos@singularlogic.eu"},
   { name="Athos Papanikolaou", email="apapanikolaou@singularlogic.eu"},

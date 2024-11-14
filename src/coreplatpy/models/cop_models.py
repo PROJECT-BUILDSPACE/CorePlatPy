@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any, Union
 
 
@@ -18,14 +18,18 @@ class CopernicusTask(BaseModel):
     message: Optional[str] = ""
     error: Optional[CopernicusTaskError] = CopernicusTaskError()
 
-
-class CopernicusDetails(BaseModel):
+class TaskDetails(BaseModel):
     task_id: str = ""
     service: str = ""
-    fingerprint: str = ""
     status: str = ""
     error: Optional[CopernicusTaskError] = CopernicusTaskError()
 
+class CopernicusRecord(BaseModel):
+    id: str = Field(alias='_id', validation_alias='_id')
+    file_id: str
+    dataset_name: str
+    parameters: dict
+    task_details: TaskDetails
 
 class AccordionOpts(BaseModel):
     openGroups: Optional[Any] = None
@@ -96,7 +100,7 @@ class Details(BaseModel):
 
 class CopernicusInput(BaseModel):
     dataset_name: str
-    body: Details
+    body: dict
 
 
 class Form(BaseModel):

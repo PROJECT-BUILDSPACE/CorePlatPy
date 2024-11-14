@@ -5,7 +5,7 @@ from jwt import decode
 # import pytest
 from unittest.mock import patch, mock_open
 
-EMAIL1 = 'lala@guest.com'
+EMAIL1 = 'python@test.com'
 EMAIL2 = 'test-2@python.eu'
 FIRST_NAME = 'John'
 LAST_NAME = 'Doe'
@@ -39,7 +39,7 @@ class TestAuthentication(unittest.TestCase):
         mock_getpass.side_effect = [PWD]  # Mock getpass for password and password_confirm
 
         # Initialize the Client instance
-        client = Client('http://localhost:30000','http://localhost:5001/')
+        client = Client()
 
         # Act
         client.authenticate()
@@ -53,7 +53,8 @@ class TestAuthentication(unittest.TestCase):
         # client = Client(account_url='http://localhost:5001/')
         client = Client(account_url='https://account-buildspace.euinno.eu/')
 
-        client.login(EMAIL1, PWD)
+        # client.login(EMAIL1, PWD)
+        client.login('isotiropoulos@singularlogic.eum', '123456789')
         user_data = decode(client.api_key,  options={"verify_signature": False})
         print(user_data)
         self.assertEqual(user_data['name'], f'{FIRST_NAME} {LAST_NAME}')
@@ -66,8 +67,9 @@ class TestAuthentication(unittest.TestCase):
         # client.login(EMAIL1, PWD)
         # client.update_my_password(PWD2)
 
-        client.login('isotiropoulos@singularlogic.eu', '1234')
-        client.update_my_password('123456789')
+        client.login('isotiropoulos@singularlogic.eu', 'PX-E850E')
+        client.update_my_password()
+
 
         # client.login(EMAIL1, PWD2)
 
@@ -264,49 +266,90 @@ class TestAuthentication(unittest.TestCase):
 
 
     def test_copernicus_list(self):
-        client = Client('http://localhost:30000', 'http://localhost:5001/')
-        client.login(EMAIL1, PWD)
-        atm_list = client.list_copernicus_resources_per_service("ads")
+        client = Client()
+        client.login('test@test.eu', 'test')
+        copernicus = client.get_Copernicus()
+
+        atm_list = copernicus.list_resources_per_service("ads")
         print("atmosphere datasets list:", json.dumps(atm_list, indent=4))
-        climate_list = client.list_copernicus_resources_per_service("cds")
+        climate_list = copernicus.list_resources_per_service("cds")
         print("climate datasets list:", json.dumps(climate_list, indent=4))
         return
 
+    def test_copernicus_DEL_FILE(self):
+        client = Client(api_url='http://localhost:30000/')
+        client.login(EMAIL1, PWD)
+        copernicus = client.get_Copernicus()
+        file_id = copernicus.get_folder().list_items().files[0].id
+        del_file = copernicus.get_dataset(dataset_id=file_id)
+        print(del_file)
+
+        r = del_file.delete()
+        print(r)
+    def test_copernicus_folder(self):
+        client = Client()
+        client.login(EMAIL1, PWD)
+        copernicus = client.get_Copernicus()
+        print(copernicus.get_folder().list_items())
+
     def test_copernicus_form(self):
-        client = Client('http://localhost:30000','http://localhost:5001/')
+        client = Client()
         client.login(EMAIL1, PWD)
         dataset_form= client.get_copernicus_form_for_resource("cds", "reanalysis-era5-pressure-levels")
         print("form for selected dataset:",  json.dumps(dataset_form, indent=4))
         return
 
-    def test_copernicus_dataset_request(self):
-        client = Client('http://localhost:30000', 'http://localhost:5001/')
+    def test_copernicus_available(self):
+        client = Client(api_url='http://localhost:30000/')
         client.login(EMAIL1, PWD)
-        my_task = client.copernicus_dataset_request("cds",{
-                    "datasetname" : "reanalysis-era5-pressure-levels",
-                    "body" :{
-                              "date": "2017-12-01/2017-12-31",
-                              "format": "grib",
-                              "pressure_level": "1000",
-                              "product_type": "reanalysis",
-                              "time": "12:00",
-                              "variable": "temperature"
-                            }
-                } )
-        print(my_task.status)
-        status = client.check_download_status(my_task.id)
-        print("Task status: ", status)
+        copernicus = client.get_Copernicus()
+        r = copernicus.list_available_datasets()
+
+
+        print(r)
+        return
+
+
+    def test_copernicus_dataset_request(self):
+        client = Client(api_url='http://localhost:30000/')
+        client.login(EMAIL1, PWD)
+
+        copernicus = client.get_Copernicus()
+
+        my_task = copernicus.request_dataset("cds", "reanalysis-era5-pressure-levels",
+                    {
+                        "date": "2017-12-01/2017-12-31",
+                        "format": "grib",
+                        "pressure_level": "1000",
+                        "product_type": "reanalysis",
+                        "time": "12:00",
+                        "variable": "temperature"
+                    }
+                )
+        print(my_task)
+
+    def test_get_status(self):
+        client = Client()
+        client.login(EMAIL1, PWD)
+
+        copernicus = client.get_folder(folder_name='Copernicus')
+
+        dataset = copernicus.get_file(file_name='reanalysis-era5-pressure-levels')
+
+        resp = client.check_download_status('cds', dataset.copernicus_details.task_id)
+        print(resp)
+
 
     def test_update_user_groups(self):
         client = Client()
 
         # Add EMAIL2 user to Organization_1
-        client.login(EMAIL1, PWD2)
+        client.login('isotiropoulos@singularlogic.eu', '123456789')
 
         users = {
-            EMAIL2: "admin"
+            'demo-review@buildspace.eu': "admin"
         }
-        success = client.add_user_to_group(ORG + '1', users)
+        success = client.add_user_to_group('DummyOrg', users)
         self.assertTrue(success)
 
     def test_get_group_role(self):
@@ -315,6 +358,11 @@ class TestAuthentication(unittest.TestCase):
 
         role = client.get_group_role(ORG + '1')
 
+    def test_get_my_folders(self):
+        client = Client()
+        client.login('isotiropoulos@singularlogic.eu', '123456789')
+
+        print(client.get_my_folders())
 
     # def test_update_group_role(self):
     #     client = Client()
@@ -424,18 +472,34 @@ class TestAuthentication(unittest.TestCase):
         print("folder.title: ", folder.meta.title)
 
 
+
+    def test_get_all_orgs(self):
+        client = Client()
+        # client.login(EMAIL1, PWD2)
+        client.login('isotiropoulos@singularlogic.eu', '123456789')
+
+        orgs = client.get_all_organizations()
+        print(orgs)
+
+
     def test_file_removal(self):
 
         client = Client()
 
-        client.login("example-user@example.com", "1234")
+        client.login("client_1@test.eu", "client_1")
+        # print(client.get_my_organizations())
+        # folder = client.get_folder(folder_id="11c5f969-b20e-4e57-90de-1caee6faf1a3")
 
-        folder = client.get_folder(folder_name="Example-Organization")
-        # print("folder: ", folder)
-        for f in folder.list_items().files:
-            file = folder.get_file(file_id=f.id)
-            r = file.delete()
-            print(r, f.id)
+        coper = client.get_Copernicus()
+
+        for item in coper.list_available_datasets():
+            file = coper.get_dataset(dataset_id=item.file_id)
+        # file = folder.get_file(file_id=folder.list_items().files[0].id)
+            file.delete()
+        # for f in folder.list_items().files:
+        #     file = folder.get_file(file_id=f.id)
+        #     r = file.delete()
+        #     print(r, f.id)
 
 
 

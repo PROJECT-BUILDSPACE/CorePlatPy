@@ -1,7 +1,7 @@
 import requests
 from urllib.parse import urlencode
 from ..models import ErrorReport, Folder, FolderList, PostFolder, CopyModel, Updated
-from typing import Union
+from typing import Union, List
 from ..utils import safe_data_request
 
 endpoint = "folder"
@@ -77,3 +77,12 @@ def delete_folder(baseurl: str, folder_id: str, token: str) -> Union[None, Error
     if isinstance(response, ErrorReport):
         return response
     return None
+
+def get_all_my_folders(baseurl: str, token: str) -> Union[List[Folder], ErrorReport]:
+    uri = baseurl + f'{endpoint}/mine'
+    head = {'Content-Type': 'application/json', 'Authorization': f'Bearer {token}'}
+    print(uri)
+    response = safe_data_request('GET', uri, None, head)
+    if isinstance(response, ErrorReport):
+        return response
+    return [Folder.model_validate(item) for item in response]

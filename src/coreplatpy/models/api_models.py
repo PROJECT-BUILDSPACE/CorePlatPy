@@ -1,11 +1,13 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime
 import os
 from tqdm import tqdm
 from threading import Thread
 from ..utils import ensure_token
+from .cop_models import CopernicusTask
+
 
 chunk_size = 5 * 1024 * 1024
 
@@ -28,21 +30,7 @@ class Meta(BaseModel):
     tags: Optional[List[str]] = []
     update: Updated = Updated()
 
-class CopernicusTaskError(BaseModel):
-    reason: str = ""
-    message: str = ""
-    url: Optional[str] = ""
-    context: Optional[list] = []
-    permanent: Optional[bool] = False
-    who: Optional[str] = ""
 
-
-class CopernicusDetails(BaseModel):
-    task_id: str = ""
-    service: str = ""
-    fingerprint: str = ""
-    status: str = ""
-    error: Optional[CopernicusTaskError] = CopernicusTaskError()
 
 class File(BaseModel):
     id: str = Field(alias='_id', default=None)
@@ -53,12 +41,10 @@ class File(BaseModel):
     file_type: str = ""
     size: int = 0
     total: int = 0
-    copernicus_details: Optional[CopernicusDetails] = CopernicusDetails()
-
     client_params: Optional[dict] = {}
 
     @ensure_token
-    def save(self, path: str):
+    def store(self, path: str):
         from ..storage.files import get_part
 
         results = [b''] * self.total
@@ -174,8 +160,17 @@ class File(BaseModel):
                 return False
             return True
         except Exception as e:
-            print(f"Unexpected error while deleting folder: {e}")
+            print(f"Unexpected error while deleting file: {e}")
             return False
+
+
+    @ensure_token
+    def check_request_status(self) -> Union[CopernicusTask, None]:
+        from ..storage.copernicus import get_status
+
+        complete_task = get_status(self.client_params['api_url'], service, task_id, self.client_params['api_key'])
+        #if returns complete then proceeds to download dataset to cop bucket
+        return complete_task
 
 
 
@@ -209,7 +204,7 @@ class Folder(BaseModel):
     client_params: Optional[dict] = {}
 
     @ensure_token
-    def upload_file(self, path: str, meta: dict = None):
+    def _old_upload_file(self, path: str, meta: dict = None):
         from ..storage.files import initialize_upload, send_part
         from ..utils.helpers import split_file_chunks, preety_print_error
         from .generic_models import ErrorReport
@@ -242,7 +237,7 @@ class Folder(BaseModel):
             thread.join()
 
     @ensure_token
-    def beta_upload_file(self, path: str, meta: dict = None, verbose: bool = True):
+    def upload_file(self, path: str, meta: dict = None, verbose: bool = True):
         import concurrent.futures
         import multiprocessing
 
@@ -291,7 +286,7 @@ class Folder(BaseModel):
                         break
 
     @ensure_token
-    def beta_upload_folder_contents(self, path: str, range: range = None):
+    def upload_folder_contents(self, path: str, range: range = None):
         import concurrent.futures
         import multiprocessing
         with concurrent.futures.ThreadPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
@@ -366,7 +361,7 @@ class Folder(BaseModel):
         print(f"📁{self.meta.title}\n" + __iterative__call__(self.id))
 
     @ensure_token
-    def save_file(self, path: str, file_id:str = None, file_name:str = None):
+    def store_file(self, path: str, file_id:str = None, file_name:str = None):
         from ..storage.files import get_info, get_part
         from ..storage.folders import folder_acquisition_by_name
         from .generic_models import ErrorReport
@@ -576,6 +571,12 @@ class Folder(BaseModel):
         folder.meta.title = new_name
 
         return update_folder(self.client_params['api_url'], folder, self.client_params['api_key'])
+
+    def update_description(self, description: str):
+        from ..storage.folders import update_folder
+
+        self.meta.description = description
+        return update_folder(self.client_params['api_url'], self, self.client_params['api_key'])
 
     @ensure_token
     def rename_file(self, file_name, new_name):

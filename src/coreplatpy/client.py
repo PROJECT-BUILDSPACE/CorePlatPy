@@ -1,5 +1,5 @@
 from .models import (
-    UpdateUser, LoginParams, BearerToken, ErrorReport, UserAttrs, UserData,
+    UpdateUser, LoginParams, ErrorReport, UserAttrs, UserData,
     Organization, Bucket, Folder, RoleUpdate, Role, File, JoinGroupBody, UserRegistration,
     PostFolder, Updated
 )
@@ -7,17 +7,15 @@ from .account import (
     authenticate_sync, update_info, get_user_data,
     post_organization, get_user_organizations,
     post_new_group, delete_group,
-    update_role, get_role, get_organization_by_id, get_organization_by_name, post_picture, register
+    update_role, get_role, get_organization_by_id, get_organization_by_name, post_picture, register, get_all_organizations as gao
 )
 
 from .storage import (
     create_bucket, folder_acquisition_by_id, folder_acquisition_by_name, delete_bucket,
-    update_folder, delete_folder, get_info, delete_file, update_file
+    update_folder, delete_folder, get_info, delete_file, update_file, get_all_my_folders
 )
 
-from .copernicus import(
-    get_list, get_form, get_status, post_dataset, CopernicusDetails, CopernicusTask
-)
+from .copernicus import Copernicus
 
 from .utils import ensure_token
 
@@ -27,6 +25,7 @@ from .utils import preety_print_error
 from typing import Union, List
 import uuid
 from datetime import datetime
+
 
 
 class Client:
@@ -51,18 +50,18 @@ class Client:
     def __get_instance_variables__(self):
         return {k: v for k, v in self.__dict__.items() if not k.startswith('__') and not callable(v)}
 
-    def register(self):
+    def register(self, email=None, firstName=None, lastName=None, password=None, password_confirm=None, picture_path=None):
         """
          Register new User to Core Platform.
          """
         try:
-            email = input("Email: ")
-            firstName = input("First Name: ")
-            lastName = input("Last Name: ")
+            email = email if email else input("Email: ")
+            firstName = firstName if firstName else input("First Name: ")
+            lastName = lastName if lastName else input("Last Name: ")
             # password = input("Last Name: ")
             # password_confirm = input("Last Name: ")
-            password = getpass.getpass("Password: ")
-            password_confirm = getpass.getpass("Confirm Password: ")
+            password = password if password else getpass.getpass("Password: ")
+            password_confirm = password_confirm if password_confirm else getpass.getpass("Confirm Password: ")
 
             if password_confirm!=password:
                 raise ValueError("Passwords do not match!")
@@ -80,9 +79,9 @@ class Client:
                 raise
             else:
                 self.login(email, password)
-            picture_path = input("Profile picture path (can be omitted): ")
+            picture_path = picture_path if picture_path else input("Profile picture path (can be omitted): ")
             picture = None
-            if picture_path != "":
+            if picture_path.strip() != "":
                 with open(picture_path, 'rb') as f:
                     picture = f.read()
                     if len(picture) >  5 * 1024 * 1024:  # 5MB in bytes
@@ -131,7 +130,6 @@ class Client:
                 preety_print_error(access)
             else:
                 self.api_key = access.access_token
-                print(access.access_token)
                 self.refresh_token = access.refresh_token
                 self.expires_at =  datetime.utcfromtimestamp(decode(access.access_token, options={"verify_signature": False, "verify_aud": False})['exp'])
         except Exception as e:
@@ -204,6 +202,7 @@ class Client:
         :param org_id: Optional group ID if predefined.
         :return: Organization object.
         """
+        import requests
         new_org = Organization(name=organization, id=org_id, sub_orgs=sub_orgs,
                                     attributes=attributes, path=path)
 
@@ -229,12 +228,16 @@ class Client:
             self.api_key = response.json()['access_token']
             self.refresh_token = response.json()['refresh_token']
             self.expires_at = datetime.utcfromtimestamp(
-                decode(self.api_key, options={"verify_signature": False})['exp'])
+                decode(self.api_key,  options={"verify_signature": False,"verify_aud": False})['exp'])
         return resp
 
     @ensure_token
     def get_my_organizations(self) -> Union[List[Organization], None]:
         return (get_user_organizations(self.account_url, self.api_key))
+
+    @ensure_token
+    def get_all_organizations(self) -> Union[List[Organization], None]:
+        return (gao(self.account_url, self.api_key))
 
     @ensure_token
     def add_user_to_group(self, group_name: str, user_data: dict) -> bool:
@@ -254,19 +257,21 @@ class Client:
             raise
 
     @ensure_token
-    def remove_organization(self, organization_name: str) -> bool:
+    def remove_organization(self, organization_id: str = None, organization_name: str = None) -> bool:
         try:
-            organization = get_organization_by_name(self.account_url, organization_name, self.api_key)
-            if isinstance(organization, ErrorReport):
-                preety_print_error(organization)
-                return False
+            if not organization_id:
+                organization = get_organization_by_name(self.account_url, organization_name, self.api_key)
+                if isinstance(organization, ErrorReport):
+                    preety_print_error(organization)
+                    return False
+                organization_id = organization.id
 
-            resp = delete_bucket(self.api_url, organization.id, self.api_key)
+            resp = delete_bucket(self.api_url, organization_id, self.api_key)
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
                 return False
 
-            resp = delete_group(self.account_url, organization.id, self.api_key)
+            resp = delete_group(self.account_url, organization_id, self.api_key)
             if isinstance(resp, ErrorReport):
                 preety_print_error(resp)
                 return False
@@ -349,34 +354,6 @@ class Client:
             folder.client_params = self.__get_instance_variables__()
             return folder
 
-    @ensure_token
-    def list_copernicus_resources_per_service(self, service:str):
-        resource_list = get_list(self.api_url, service, self.api_key)
-        return resource_list
-
-    @ensure_token
-    def get_copernicus_form_for_resource(self,  service:str, dataset:str):
-        dataset_form = get_form(self.api_url, service, dataset, self.api_key)
-        return dataset_form
-
-    @ensure_token
-    def copernicus_dataset_request(self, service:str, body:any) -> Union[CopernicusDetails, None]:
-        new_task = post_dataset(self.api_url, body, service, self.api_key)
-        return new_task
-
-    @ensure_token
-    def check_download_status(self, task_id:str) -> Union[CopernicusTask, None]:
-        complete_task = get_status(self.api_url, task_id, self.api_key)
-        #if returns complete then proceeds to download dataset to cop bucket
-        return complete_task
-
-    @ensure_token
-    def download_copernicus_dataset(self, task_id:str) -> Union[File, None]:
-        #copy download file from above xd
-        #is download file not implemented?
-        #GET COPERNICUS BUCKET...
-
-        return
 
     @ensure_token
     def upload_picture(self, picture_path):
@@ -389,6 +366,8 @@ class Client:
                 return post_picture(self.account_url, picture, user_data['sub'], self.api_key)
         return False
 
+    def get_my_folders(self):
+        return get_all_my_folders(self.api_url, self.api_key)
 
     @ensure_token
     def del_file(self, file_id: str) -> bool:
@@ -402,3 +381,15 @@ class Client:
         except Exception as e:
             print(f"Unexpected error while deleting folder: {e}")
             return False
+
+
+    @ensure_token
+    def get_Copernicus(self) -> Copernicus:
+        return Copernicus(
+            api_url = self.api_url,
+            account_url = self.account_url,
+            api_key = self.api_key,
+            user_id = self.user_id,
+            refresh_token = self.refresh_token,
+            expires_at = self.expires_at
+        )

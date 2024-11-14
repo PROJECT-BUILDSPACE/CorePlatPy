@@ -230,7 +230,7 @@ def ensure_token(func):
                 else:
                     self.api_key = response.json()['access_token']
                     self.refresh_token = response.json()['refresh_token']
-                    self.expires_at = datetime.utcfromtimestamp(decode(self.api_key, options={"verify_signature": False})['exp'])
+                    self.expires_at = datetime.utcfromtimestamp(decode(self.api_key,  options={"verify_signature": False,"verify_aud": False})['exp'])
         except AttributeError:
             if datetime.utcnow() >= self.client_params['expires_at']:
                 try:
@@ -241,7 +241,7 @@ def ensure_token(func):
                 else:
                     self.client_params['api_key'] = response.json()['access_token']
                     self.client_params['refresh_token'] = response.json()['refresh_token']
-                    self.client_params['expires_at'] = datetime.utcfromtimestamp(decode(self.client_params['api_key'], options={"verify_signature": False})['exp'])
+                    self.client_params['expires_at'] = datetime.utcfromtimestamp(decode(self.client_params['api_key'],  options={"verify_signature": False,"verify_aud": False})['exp'])
         except Exception as e:
             raise Exception(e)
         return func(self, *args, **kwargs)
