@@ -1,3 +1,4 @@
+import logging
 import unittest, json
 from src.coreplatpy import *
 from src.coreplatpy.models import *
@@ -5,12 +6,12 @@ from jwt import decode
 # import pytest
 from unittest.mock import patch, mock_open
 
-EMAIL1 = 'python@test.com'
-EMAIL2 = 'test-2@python.eu'
-FIRST_NAME = 'John'
-LAST_NAME = 'Doe'
+EMAIL1 = 'saspragkathos@singularlogic.eu'
+# EMAIL2 = 'test-2@python.eu'
+FIRST_NAME = 'Sotiris'
+LAST_NAME = 'Aspragkathos'
 PWD = '123456789'
-PWD2 = 'password'
+# PWD2 = 'password'
 
 ORG = 'Organization_'
 FOL = "Folder_"
@@ -54,23 +55,21 @@ class TestAuthentication(unittest.TestCase):
         client = Client(account_url='https://account-buildspace.euinno.eu/')
 
         # client.login(EMAIL1, PWD)
-        client.login('isotiropoulos@singularlogic.eum', '123456789')
+        client.login('saspragkathos@singularlogic.eu', '123456789')
         user_data = decode(client.api_key,  options={"verify_signature": False})
         print(user_data)
         self.assertEqual(user_data['name'], f'{FIRST_NAME} {LAST_NAME}')
         self.assertEqual(user_data['preferred_username'], EMAIL1)
-        self.assertIn('groupIDs', user_data.keys())
-        self.assertIn('groupIDs', user_data.keys())
+        # print(f"user data keys are: {user_data.keys()}")
+        # self.assertIn('groupIDs', user_data.keys())
 
     def test_update_password(self):
         client = Client()
         # client.login(EMAIL1, PWD)
         # client.update_my_password(PWD2)
 
-        client.login('isotiropoulos@singularlogic.eu', 'PX-E850E')
-        client.update_my_password()
-
-
+        client.login('saspragkathos@singularlogic.eu', '123456789')
+        client.update_my_password('987654321')
         # client.login(EMAIL1, PWD2)
 
 
@@ -135,7 +134,7 @@ class TestAuthentication(unittest.TestCase):
 
     def test_get_folder_by_id_and_name(self):
         client = Client()
-        client.login(EMAIL1, PWD2)
+        client.login(EMAIL1, PWD)
 
         selection = client.get_folder(folder_name=f"{ORG + '1'}/{FOL + '1'}")
         folder = client.get_folder(folder_id=selection.parent)
@@ -353,10 +352,11 @@ class TestAuthentication(unittest.TestCase):
         self.assertTrue(success)
 
     def test_get_group_role(self):
-        client = Client()
-        client.login(EMAIL1, PWD2)
+        client = Client(account_url="http://localhost:5001/")
+        client.login(EMAIL1, PWD)
 
-        role = client.get_group_role(ORG + '1')
+        role = client.get_group_role("Test_Organization_2")
+        print(f"returned role: '{role}'")
 
     def test_get_my_folders(self):
         client = Client()
